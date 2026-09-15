@@ -1,9 +1,16 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { sendLeaveDecisionToEmployee } from "@/lib/email";
+import { getProductBranding } from "@/lib/product-mode";
 import { DecisionUI } from "./ui";
 
+const branding = getProductBranding();
+
 export const metadata = {
-  title: "Leave Decision — Verofax",
+  title: `Leave Decision — ${branding.pageTitle}`,
+  // Explicit override — without this, Next.js metadata merging inherits
+  // the ROOT layout's "Verofax internal finance management..." description
+  // into this page too, since only `title` was overridden.
+  description: `${branding.fullName}. Restricted access.`,
   robots: { index: false, follow: false },
 };
 
@@ -37,7 +44,7 @@ export default async function DecisionPage({ params, searchParams }: PageProps) 
   if (error || !req) {
     return (
       <CenteredCard headline="Invalid link" color="red">
-        <p>This approval link is invalid or has been removed. Contact <a href="mailto:hr@verofax.com" className="underline">HR</a> if you think this is an error.</p>
+        <p>This approval link is invalid or has been removed. Contact <a href={`mailto:${branding.contactEmail}`} className="underline">HR</a> if you think this is an error.</p>
       </CenteredCard>
     );
   }
@@ -143,7 +150,7 @@ export default async function DecisionPage({ params, searchParams }: PageProps) 
     <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #f6f9ff 0%, #dbe4f3 100%)" }}>
       <div className="max-w-[560px] mx-auto px-6 py-12">
         <header className="text-center mb-8">
-          <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-navy-700 mb-2">VEROFAX</div>
+          <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-navy-700 mb-2">{branding.name.toUpperCase()}</div>
           <h1 className="font-display text-3xl font-extrabold text-navy-700 mb-2">Confirm Leave Decision</h1>
           <p className="text-sm text-slate-500">Review the request and confirm. This cannot be undone.</p>
         </header>
@@ -161,7 +168,7 @@ export default async function DecisionPage({ params, searchParams }: PageProps) 
         />
 
         <p className="text-xs text-slate-400 text-center mt-8">
-          Verofax Finance Platform · Confidential internal use
+          {branding.pageFooterLine}
         </p>
       </div>
     </div>

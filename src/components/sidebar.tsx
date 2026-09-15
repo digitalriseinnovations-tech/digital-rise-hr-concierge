@@ -15,18 +15,35 @@ interface NavItem {
   roles: FinanceRole[];
 }
 
+// Grouped so the HR Concierge product surfaces as one coherent block
+// (Insights -> Knowledge -> Learning -> Requests -> Leave -> Employees) for
+// the "hr" role, ahead of legacy Finance-only screens in the shared admin
+// shell. Finance/Payroll items are unchanged and already role-gated away
+// from "hr" — see the Slice 5 report's LEGACY UI / FUTURE EXTRACTION note
+// for why this shell isn't being physically split in this sprint.
+//
+// HR product isolation (this task): "Dashboard" (Finance KPIs, no
+// permission gate), "Reports", and "Import / Export" (both unbuilt
+// Finance-flavored "coming soon" stubs) are deliberately NOT in the "hr"
+// role's list — Concierge Insights is HR's equivalent landing view, and
+// neither stub has any HR-relevant content yet. finance/admin/viewer see
+// all three completely unchanged.
 const NAV: NavItem[] = [
-  { label: "Dashboard",        href: "/",                   icon: "▣", roles: ["admin", "finance", "hr", "viewer"] },
-  { label: "Employees",        href: "/employees",          icon: "◉", roles: ["admin", "finance", "hr", "viewer"] },
-  { label: "Payroll",          href: "/payroll",            icon: "◧", roles: ["admin", "finance"] },
-  { label: "Payslips",         href: "/payslips",           icon: "◊", roles: ["admin", "finance"] },
-  { label: "Leave",            href: "/leave",              icon: "◐", roles: ["admin", "hr", "finance"] },
-  { label: "Benefits",         href: "/benefits",           icon: "✦", roles: ["admin", "finance", "hr"] },
-  { label: "Sales Bonus",      href: "/bonus",              icon: "▲", roles: ["admin", "finance"] },
-  { label: "Reports",          href: "/reports",            icon: "▦", roles: ["admin", "finance", "hr", "viewer"] },
-  { label: "Import / Export",  href: "/io",                 icon: "⇄", roles: ["admin", "finance", "hr"] },
-  { label: "Audit Logs",       href: "/audit",              icon: "⚐", roles: ["admin"] },
-  { label: "Settings",         href: "/settings",           icon: "⚙", roles: ["admin"] },
+  { label: "Dashboard",          href: "/",                   icon: "▣", roles: ["admin", "finance", "viewer"] },
+  { label: "Concierge Insights", href: "/concierge-insights", icon: "◆", roles: ["admin", "hr"] },
+  { label: "HR Knowledge",       href: "/hr-knowledge",       icon: "❋", roles: ["admin", "hr"] },
+  { label: "HR Learning",        href: "/hr-learning",        icon: "◈", roles: ["admin", "hr"] },
+  { label: "Employee Requests",  href: "/employee-requests",  icon: "✉", roles: ["admin", "hr"] },
+  { label: "Leave",              href: "/leave",              icon: "◐", roles: ["admin", "hr", "finance"] },
+  { label: "Employees",          href: "/employees",          icon: "◉", roles: ["admin", "finance", "hr", "viewer"] },
+  { label: "Benefits",           href: "/benefits",           icon: "✦", roles: ["admin", "finance", "hr"] },
+  { label: "Payroll",            href: "/payroll",            icon: "◧", roles: ["admin", "finance"] },
+  { label: "Payslips",           href: "/payslips",           icon: "◊", roles: ["admin", "finance"] },
+  { label: "Sales Bonus",        href: "/bonus",              icon: "▲", roles: ["admin", "finance"] },
+  { label: "Reports",            href: "/reports",            icon: "▦", roles: ["admin", "finance", "viewer"] },
+  { label: "Import / Export",    href: "/io",                 icon: "⇄", roles: ["admin", "finance"] },
+  { label: "Audit Logs",         href: "/audit",              icon: "⚐", roles: ["admin"] },
+  { label: "Settings",           href: "/settings",           icon: "⚙", roles: ["admin"] },
 ];
 
 export function Sidebar({ userName, role }: { userName: string; role: FinanceRole }) {
@@ -53,8 +70,17 @@ export function Sidebar({ userName, role }: { userName: string; role: FinanceRol
       <div className="px-5 py-5 border-b border-slate-200 flex items-center justify-between">
         {!collapsed && (
           <div>
-            <div className="text-[10px] tracking-[0.18em] font-bold text-navy-700 uppercase">Verofax</div>
-            <div className="font-display text-lg font-extrabold text-navy-700 leading-none">Finance</div>
+            {role === "hr" ? (
+              <>
+                <div className="text-[10px] tracking-[0.18em] font-bold text-navy-700 uppercase">Digital Rise</div>
+                <div className="font-display text-lg font-extrabold text-navy-700 leading-none">HR Concierge</div>
+              </>
+            ) : (
+              <>
+                <div className="text-[10px] tracking-[0.18em] font-bold text-navy-700 uppercase">Verofax</div>
+                <div className="font-display text-lg font-extrabold text-navy-700 leading-none">Finance</div>
+              </>
+            )}
           </div>
         )}
         <button

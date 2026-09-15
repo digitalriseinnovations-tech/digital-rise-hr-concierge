@@ -16,7 +16,7 @@ export interface FinanceUser {
 const PERMISSIONS: Record<FinanceRole, Set<string>> = {
   admin:   new Set(["*"]),
   finance: new Set(["salary.view", "salary.edit", "bonus.view", "bonus.edit", "dues.view", "dues.edit", "payslip.generate", "report.view", "employee.view"]),
-  hr:      new Set(["employee.view", "employee.edit", "leave.view", "leave.edit", "benefits.view", "benefits.edit", "report.view"]),
+  hr:      new Set(["employee.view", "employee.edit", "leave.view", "leave.edit", "benefits.view", "benefits.edit", "report.view", "hr_knowledge.view", "hr_knowledge.edit", "hr_learning.view", "hr_learning.edit", "concierge_insights.view", "employee_requests.view", "employee_requests.edit"]),
   viewer:  new Set(["dashboard.view", "report.view"]),
 };
 

@@ -1,4 +1,5 @@
 import nodemailer, { type Transporter } from "nodemailer";
+import { getProductBranding } from "@/lib/product-mode";
 
 // ============================================================================
 // Email sender — Gmail SMTP via nodemailer
@@ -49,7 +50,7 @@ interface SendArgs {
 async function send({ to, subject, html, replyTo }: SendArgs) {
   try {
     const user = process.env.GMAIL_USER!;
-    const fromName = process.env.GMAIL_FROM_NAME || "Verofax Finance";
+    const fromName = process.env.GMAIL_FROM_NAME || getProductBranding().fullName;
     const fromAddr = `${fromName} <${user}>`;
 
     const info = await getTransport().sendMail({
@@ -70,7 +71,10 @@ async function send({ to, subject, html, replyTo }: SendArgs) {
 // Templates
 // ============================================================================
 
-function leaveRequestEmail(args: {
+// Exported (not just used internally) specifically so tests can assert on
+// the actual rendered HTML's branding without sending a real email through
+// SMTP — see tests/platform/product-branding.test.ts.
+export function leaveRequestEmail(args: {
   managerName: string;
   employeeName: string;
   leaveType: string;
@@ -85,6 +89,7 @@ function leaveRequestEmail(args: {
   const reasonBlock = args.reason
     ? `<tr><td style="padding:8px 0;font-size:13px;color:#64748b;width:140px;">Reason</td><td style="padding:8px 0;font-size:14px;color:#0f172a;">${escapeHtml(args.reason)}</td></tr>`
     : "";
+  const branding = getProductBranding();
   return `
 <!doctype html>
 <html><body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
@@ -92,7 +97,7 @@ function leaveRequestEmail(args: {
   <tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
       <tr><td style="background:linear-gradient(135deg,#0040A0,#002060);padding:24px 28px;">
-        <div style="color:#dbe4f3;font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">Verofax Finance</div>
+        <div style="color:#dbe4f3;font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">${escapeHtml(branding.fullName)}</div>
         <div style="color:#fff;font-size:22px;font-weight:800;margin-top:4px;">New Leave Request</div>
       </td></tr>
       <tr><td style="padding:28px;">
@@ -118,7 +123,7 @@ function leaveRequestEmail(args: {
       </td></tr>
       <tr><td style="background:#f6f9ff;padding:16px 28px;border-top:1px solid #e2e8f0;">
         <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
-          Verofax Finance Platform · Internal use only
+          ${escapeHtml(branding.footerLine)}
         </p>
       </td></tr>
     </table>
@@ -127,7 +132,7 @@ function leaveRequestEmail(args: {
 </body></html>`;
 }
 
-function employeeDecisionEmail(args: {
+export function employeeDecisionEmail(args: {
   employeeName: string;
   decision: "approved" | "rejected";
   leaveType: string;
@@ -146,6 +151,7 @@ function employeeDecisionEmail(args: {
   const cta = approved
     ? `<p style="margin:18px 0 0;font-size:14px;color:#475569;line-height:1.55;">Your balance has been updated. Enjoy your time off!</p>`
     : `<p style="margin:18px 0 0;font-size:14px;color:#475569;line-height:1.55;">Please reach out to ${escapeHtml(args.decisionBy)} if you'd like to discuss.</p>`;
+  const branding = getProductBranding();
   return `
 <!doctype html>
 <html><body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
@@ -153,7 +159,7 @@ function employeeDecisionEmail(args: {
   <tr><td align="center">
     <table width="540" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
       <tr><td style="background:${headerBg};padding:24px 28px;">
-        <div style="color:rgba(255,255,255,0.8);font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">Verofax Finance</div>
+        <div style="color:rgba(255,255,255,0.8);font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">${escapeHtml(branding.fullName)}</div>
         <div style="color:#fff;font-size:22px;font-weight:800;margin-top:4px;">${headerLabel}</div>
       </td></tr>
       <tr><td style="padding:28px;">
@@ -245,5 +251,67 @@ export async function sendLeaveDecisionToEmployee(args: {
       decisionBy: args.decisionBy,
       notes: args.notes,
     }),
+  });
+}
+
+// ============================================================================
+// HR Concierge — escalation notification (additive; reuses the same
+// transport/send() helper above, not a new email system)
+// ============================================================================
+
+function hrEscalationEmail(args: {
+  employeeName: string;
+  category: string;
+  reason: string;
+  conversationId: string;
+}) {
+  return `
+<!doctype html>
+<html><body style="margin:0;padding:0;background:#f1f5f9;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:40px 0;">
+  <tr><td align="center">
+    <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
+      <tr><td style="background:linear-gradient(135deg,#0040A0,#002060);padding:24px 28px;">
+        <div style="color:#dbe4f3;font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">Digital Rise HR Concierge</div>
+        <div style="color:#fff;font-size:22px;font-weight:800;margin-top:4px;">Employee wants to speak with HR</div>
+      </td></tr>
+      <tr><td style="padding:28px;">
+        <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.55;">
+          <strong>${escapeHtml(args.employeeName)}</strong> asked HR Concierge to connect them with a human HR team member.
+        </p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;padding:18px;background:#f6f9ff;">
+          <tr><td style="padding:8px 0;font-size:13px;color:#64748b;width:140px;">Category</td><td style="padding:8px 0;font-size:14px;color:#0f172a;font-weight:600;text-transform:capitalize;">${escapeHtml(args.category)}</td></tr>
+          <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Note</td><td style="padding:8px 0;font-size:14px;color:#0f172a;">${escapeHtml(args.reason)}</td></tr>
+        </table>
+        <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
+          This is only what HR Concierge captured — it does not include the rest of their conversation. Please
+          follow up with ${escapeHtml(args.employeeName)} directly.
+        </p>
+      </td></tr>
+      <tr><td style="background:#f6f9ff;padding:16px 28px;border-top:1px solid #e2e8f0;">
+        <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
+          Digital Rise HR Concierge · Internal use only
+        </p>
+      </td></tr>
+    </table>
+  </td></tr>
+</table>
+</body></html>`;
+}
+
+export async function sendHrEscalationNotification(args: {
+  employeeName: string;
+  category: string;
+  reason: string;
+  conversationId: string;
+}) {
+  const to = process.env.HR_CONCIERGE_ESCALATION_EMAIL;
+  if (!to) {
+    return { ok: false, error: "HR_CONCIERGE_ESCALATION_EMAIL is not set" };
+  }
+  return send({
+    to,
+    subject: `HR Concierge: ${args.employeeName} wants to speak with HR (${args.category})`,
+    html: hrEscalationEmail(args),
   });
 }

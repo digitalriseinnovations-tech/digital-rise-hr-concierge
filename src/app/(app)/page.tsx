@@ -1,5 +1,6 @@
 import { requireUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 
 function money(n: number, currency = "AED") {
   return new Intl.NumberFormat("en-AE", {
@@ -11,6 +12,17 @@ function money(n: number, currency = "AED") {
 
 export default async function DashboardPage() {
   const user = await requireUser();
+
+  // HR isolation: this dashboard's KPIs (payroll payable/paid, bonus due,
+  // advances due) are Finance-only figures with no permission gate of
+  // their own — never appropriate to show an HR-role user. HR's
+  // equivalent "what's happening" landing view is Concierge Insights.
+  // finance/admin/viewer are completely unaffected — this dashboard's own
+  // logic is untouched for them.
+  if (user.role === "hr") {
+    redirect("/concierge-insights");
+  }
+
   const supabase = await createClient();
 
   // ---- Run all KPI queries in parallel ----

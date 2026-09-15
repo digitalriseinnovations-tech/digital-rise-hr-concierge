@@ -16,11 +16,19 @@ export default async function EmployeesPage() {
   const user = await requireUser();
   const supabase = await createClient();
   const canEdit = can(user.role, "employee.edit");
+  // Same gate the employee detail page ([id]) already uses — "hr" doesn't
+  // have salary.view, only finance/admin do. Fixed here: the column is no
+  // longer just CSS-hidden, it's never SELECTed for an unauthorized role,
+  // so unauthorized salary data never leaves the database for this request.
+  const canSeeSalary = can(user.role, "salary.view");
 
+  const baseColumns = "id, employee_code, full_name, email, department, designation, country, status, joining_date";
   const { data: employees } = await supabase
     .from("employees")
-    .select("id, employee_code, full_name, email, department, designation, country, status, salary_currency, basic_salary, joining_date")
+    .select(canSeeSalary ? `${baseColumns}, salary_currency, basic_salary` : baseColumns)
     .order("full_name", { ascending: true });
+
+  const columnCount = canSeeSalary ? 8 : 7;
 
   return (
     <div>
@@ -44,7 +52,7 @@ export default async function EmployeesPage() {
               <th>Designation</th>
               <th>Department</th>
               <th>Country</th>
-              <th>Salary</th>
+              {canSeeSalary && <th>Salary</th>}
               <th>Joined</th>
               <th>Status</th>
             </tr>
@@ -52,7 +60,7 @@ export default async function EmployeesPage() {
           <tbody>
             {(employees ?? []).length === 0 ? (
               <tr>
-                <td colSpan={8} className="text-center py-14 text-slate-500">
+                <td colSpan={columnCount} className="text-center py-14 text-slate-500">
                   <div className="text-3xl mb-2">◉</div>
                   <div className="font-medium mb-1">No employees yet</div>
                   <div className="text-xs">Run <code className="bg-slate-100 px-1.5 py-0.5 rounded text-[11px]">supabase/seed.sql</code> to load dummy data, or add your first employee.</div>
@@ -71,11 +79,13 @@ export default async function EmployeesPage() {
                   <td className="text-sm text-slate-600">{e.designation ?? "—"}</td>
                   <td className="text-sm text-slate-600">{e.department ?? "—"}</td>
                   <td className="text-sm text-slate-600">{e.country ?? "—"}</td>
-                  <td className="text-sm font-medium text-slate-700">
-                    {e.basic_salary > 0 ? (
-                      <>{new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(Number(e.basic_salary))} <span className="text-xs text-slate-400">{e.salary_currency}</span></>
-                    ) : "—"}
-                  </td>
+                  {canSeeSalary && (
+                    <td className="text-sm font-medium text-slate-700">
+                      {e.basic_salary > 0 ? (
+                        <>{new Intl.NumberFormat("en", { maximumFractionDigits: 0 }).format(Number(e.basic_salary))} <span className="text-xs text-slate-400">{e.salary_currency}</span></>
+                      ) : "—"}
+                    </td>
+                  )}
                   <td className="text-xs text-slate-500">
                     {e.joining_date ? new Date(e.joining_date).toLocaleDateString("en", { year: "numeric", month: "short", day: "numeric" }) : "—"}
                   </td>

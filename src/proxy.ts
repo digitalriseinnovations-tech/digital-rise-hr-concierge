@@ -5,16 +5,27 @@ const PUBLIC_PREFIXES = [
   "/login",
   "/auth",
   "/_next",
-  "/favicon",
+  "/favicon.ico",
   // Public leave-request flow — employees submit + managers approve without login
   "/leave-request",
   "/leave-decision",
   "/api/leave-submit",
+  // HR Concierge — employees verify their own identity (code + email) and
+  // chat, entirely separate from Supabase Auth/finance_users staff login.
+  "/concierge",
+  "/api/concierge",
 ];
 
+// Exact match, or match followed by a path separator, ONLY — never a bare
+// startsWith(p). A bare startsWith would (and, until this fix, actually
+// did) treat "/concierge-insights" — a staff-only admin route — as public
+// just because it shares the "/concierge" string prefix with the genuinely
+// public employee-facing "/concierge" routes. Every PUBLIC_PREFIXES entry
+// must be exact-or-segment-matched, including "/favicon.ico" (a file, not
+// a directory) — this is the staff-auth gate; get it precise.
 function isPublic(pathname: string): boolean {
   for (const p of PUBLIC_PREFIXES) {
-    if (pathname === p || pathname.startsWith(p + "/") || pathname.startsWith(p)) return true;
+    if (pathname === p || pathname.startsWith(p + "/")) return true;
   }
   return false;
 }
