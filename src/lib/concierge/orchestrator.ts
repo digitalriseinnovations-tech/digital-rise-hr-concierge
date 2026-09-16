@@ -32,6 +32,7 @@ const CONFIRMATION_WRITE_TOOL_NAMES = new Set([
   "request_training_enrollment",
   "create_mentorship_request",
   "create_coaching_request",
+  "escalate_to_hr",
 ]);
 
 export interface ConciergeTurnResult {
@@ -74,10 +75,10 @@ const PENDING_CONFIRMATION_TTL_MS = 15 * 60 * 1000; // 15 minutes
 const PENDING_CONFIRMATION_SCAN_LIMIT = 6; // how far back to look for a preview to recover
 
 // Reconstruct the exact input a confirmed call needs from a preview's own
-// stored output. Four write tools use this preview/confirm shape today:
+// stored output. Five write tools use this preview/confirm shape today:
 // create_leave_request (Slice 3), request_training_enrollment (Slice 4),
-// and create_mentorship_request / create_coaching_request (Slice 5), all
-// via confirmation.ts.
+// create_mentorship_request / create_coaching_request (Slice 5), and
+// escalate_to_hr (Showcase Hardening), all via confirmation.ts.
 function reconstructConfirmInput(toolName: string, output: { confirmation_token?: string }): { toolName: string; input: Record<string, unknown> } | null {
   if (toolName === "create_leave_request") {
     const o = output as unknown as { start_date: string; end_date: string; leave_type: string };
@@ -105,6 +106,13 @@ function reconstructConfirmInput(toolName: string, output: { confirmation_token?
     return {
       toolName: "create_coaching_request",
       input: { note: o.note, confirmed: true, confirmation_token: output.confirmation_token },
+    };
+  }
+  if (toolName === "escalate_to_hr") {
+    const o = output as unknown as { category: string; reason: string };
+    return {
+      toolName: "escalate_to_hr",
+      input: { category: o.category, reason: o.reason, confirmed: true, confirmation_token: output.confirmation_token },
     };
   }
   return null;
@@ -326,10 +334,18 @@ function buildFastPathReply(result: ToolExecutionResult): string {
       return "You already have an open coaching request with these exact details — no need to submit it again.";
     }
   }
+  if (result.toolName === "escalate_to_hr") {
+    if (output.status === "submitted") {
+      return "HR has been notified — a real person will follow up with you directly.";
+    }
+    if (output.status === "already_open") {
+      return "HR has already been notified about this — no need to ask again.";
+    }
+  }
   return output.message || "Done.";
 }
 
-// The four write tools and, for each, which output.status values mean a
+// The five write tools and, for each, which output.status values mean a
 // real, completed outcome (as opposed to "preview" — nothing written yet).
 // Used only by reconcileReplyWithRealOutcome below.
 const COMPLETION_STATUSES: Record<string, readonly string[]> = {
@@ -337,6 +353,7 @@ const COMPLETION_STATUSES: Record<string, readonly string[]> = {
   request_training_enrollment: ["requested", "confirmed", "waitlisted", "already_registered"],
   create_mentorship_request: ["submitted", "already_open"],
   create_coaching_request: ["submitted", "already_open"],
+  escalate_to_hr: ["submitted", "already_open"],
 };
 
 // Real-world observed failure (Slice 5 manual showcase run): even with an
@@ -448,7 +465,14 @@ export async function runConciergeTurn(params: {
       await persistMessage(conversationId, "employee", userMessage);
       const result = await executeTool(pending.toolName, pending.input, { employeeId, employeeFullName, conversationId });
       const reply = buildFastPathReply(result);
-      const escalatedFast = false; // no write tool in this fast path escalates
+      // escalate_to_hr can now reach this fast path too (Showcase
+      // Hardening) — only a real completion (submitted/already_open)
+      // counts, never a preview/error.
+      const fastPathStatus = (result.output as { status?: string } | null)?.status;
+      const escalatedFast =
+        result.toolName === "escalate_to_hr" &&
+        !result.isError &&
+        (fastPathStatus === "submitted" || fastPathStatus === "already_open");
       await persistMessage(conversationId, "assistant", reply, [
         { toolName: result.toolName, output: result.output, isError: result.isError },
       ]);
@@ -556,7 +580,14 @@ export async function runConciergeTurn(params: {
 
         toolCallSummaries.push(result.summary);
         structuredToolCalls.push({ toolName: result.toolName, output: result.output, isError: result.isError });
-        if (result.toolName === "escalate_to_hr" && !result.isError) escalated = true;
+        // Escalation is now preview -> confirm gated (Showcase Hardening) —
+        // a PREVIEW result must not mark the conversation escalated; only a
+        // real completion (a fresh submission, or a confirmed retry that
+        // reused an existing open request) does.
+        if (result.toolName === "escalate_to_hr" && !result.isError) {
+          const escalationStatus = (result.output as { status?: string } | null)?.status;
+          if (escalationStatus === "submitted" || escalationStatus === "already_open") escalated = true;
+        }
         if (
           ["search_hr_knowledge", "get_onboarding_information", "get_mentorship_information", "get_coaching_information"].includes(
             result.toolName,

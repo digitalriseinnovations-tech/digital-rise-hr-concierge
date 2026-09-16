@@ -1,5 +1,4 @@
 import "server-only";
-import { createServiceClient } from "@/lib/supabase/service";
 import { searchHrKnowledge, type HrKnowledgeCategory } from "./knowledge";
 import { CONCIERGE_TOOL_NAMES } from "./tools";
 import { sendHrEscalationNotification } from "@/lib/email";
@@ -28,6 +27,7 @@ import {
 import {
   createMentorshipRequest,
   createCoachingRequest,
+  createEscalation,
   getMyHrRequests,
   computeHrRequestToken,
   verifyHrRequestToken,
@@ -107,34 +107,76 @@ async function executeCategoryLookup(
   };
 }
 
+// Showcase Hardening: escalation now follows the exact same preview ->
+// confirm -> cryptographic-token pattern as create_mentorship_request /
+// create_coaching_request (same hr_requests table, same confirmation.ts
+// utility via hr-requests.ts) — no DB write and no email before an
+// explicit employee confirmation. Previously this fired unconditionally
+// from a single conversational request, which is unsafe for a live
+// walkthrough (one message could send a real email).
 async function executeEscalateToHr(
   input: unknown,
   ctx: ToolExecutionContext,
 ): Promise<ToolExecutionResult> {
-  const args = input as { category?: string; reason?: string };
+  const args = input as { category?: string; reason?: string; confirmed?: boolean; confirmation_token?: string };
   const category = args.category ?? "general";
   const reason = (args.reason ?? "").slice(0, 500); // short, non-sensitive note only
 
-  const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("hr_requests")
-    .insert({
-      employee_id: ctx.employeeId,
-      request_type: "escalation",
-      category,
-      note: reason,
-      conversation_id: ctx.conversationId,
-      status: "open",
-      urgent: category === "sensitive",
-    })
-    .select("id")
-    .single();
-
-  if (error || !data) {
+  if (!reason) {
     return {
       toolName: "escalate_to_hr",
-      summary: "escalate_to_hr failed — could not create HR request",
-      output: { ok: false, message: "Could not reach HR right now. Please try again or contact HR directly." },
+      summary: "escalate_to_hr → rejected, missing reason",
+      output: { ok: false, message: "Missing reason." },
+      isError: true,
+    };
+  }
+
+  // Step 1: no valid confirmation yet -> preview only. Nothing is written,
+  // no email is sent. A stale/mismatched token (a different category or
+  // reason) simply fails verification and falls back to preview, exactly
+  // like every other write tool.
+  if (!args.confirmed || !verifyHrRequestToken(args.confirmation_token, ctx.employeeId, "escalation", category, reason)) {
+    const token = computeHrRequestToken(ctx.employeeId, "escalation", category, reason);
+    return {
+      toolName: "escalate_to_hr",
+      summary: "escalate_to_hr(preview) → not yet submitted",
+      output: {
+        status: "preview",
+        category,
+        reason,
+        confirmation_token: token,
+        message:
+          "This is a PREVIEW only — HR has NOT been notified yet. Acknowledge the request and ask the employee to " +
+          "explicitly confirm, then call this tool again with confirmed=true and this exact confirmation_token.",
+      },
+      isError: false,
+    };
+  }
+
+  // Step 2: confirmed, token verified against these exact details.
+  // Idempotency guard — a retried confirmed call (duplicate "yes", a page
+  // refresh, a client retry) reuses the existing open request rather than
+  // creating a second row or sending a second email.
+  const existing = await findExistingOpenRequest(ctx.employeeId, "escalation", category, reason);
+  if (existing) {
+    return {
+      toolName: "escalate_to_hr",
+      summary: `escalate_to_hr(confirmed) → reused existing open request ${existing.id}`,
+      output: {
+        status: "already_open",
+        request_id: existing.id,
+        message: "HR has already been notified about this — no need to ask again.",
+      },
+      isError: false,
+    };
+  }
+
+  const result = await createEscalation(ctx.employeeId, category, reason, ctx.conversationId);
+  if (!result.ok) {
+    return {
+      toolName: "escalate_to_hr",
+      summary: `escalate_to_hr(confirmed) → failed: ${result.message}`,
+      output: { status: "failed", message: result.message },
       isError: true,
     };
   }
@@ -148,10 +190,10 @@ async function executeEscalateToHr(
 
   return {
     toolName: "escalate_to_hr",
-    summary: `escalate_to_hr(${category}) → hr_requests ${data.id}${emailResult.ok ? "" : " (email failed)"}`,
+    summary: `escalate_to_hr(confirmed) → hr_requests ${result.requestId}${emailResult.ok ? "" : " (email failed)"}`,
     output: {
-      ok: true,
-      requestId: data.id,
+      status: "submitted",
+      request_id: result.requestId,
       // The model should tell the employee HR has been notified — but only
       // claim the email part if it actually succeeded.
       notified: emailResult.ok,

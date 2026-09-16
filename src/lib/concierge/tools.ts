@@ -96,7 +96,12 @@ const escalateToHrTool: ConciergeToolDefinition = {
       "sensitive (employee relations, harassment, grievance, a private/personal matter), the knowledge base has no " +
       "answer, the question is outside what you're able to help with, or the employee explicitly asks for a human. " +
       "Do NOT ask the employee to explain sensitive details first — capture only a short, non-sensitive category/" +
-      "reason so a person can follow up directly.",
+      "reason so a person can follow up directly. TWO-STEP, exactly like create_leave_request/" +
+      "create_mentorship_request: (1) call WITHOUT confirmed=true first — returns a preview and a " +
+      "confirmation_token, creates NOTHING and notifies NO ONE yet. Acknowledge the request and ask the employee " +
+      "to explicitly confirm before you escalate. (2) only after explicit confirmation, call again with " +
+      "confirmed=true and the same confirmation_token, and the EXACT same category/reason as step 1 (changing " +
+      "them invalidates the token). Only step 2 creates the HR request and notifies HR.",
     input_schema: {
       type: "object",
       properties: {
@@ -111,8 +116,10 @@ const escalateToHrTool: ConciergeToolDefinition = {
             "One short, non-sensitive sentence HR can see in their queue (e.g. 'Wants to discuss a private matter' " +
             "— never the sensitive details themselves).",
         },
+        confirmed: { type: "boolean" },
+        confirmation_token: { type: "string", description: "Required when confirmed=true — from the step-1 preview." },
       },
-      required: ["category", "reason"],
+      required: ["category", "reason", "confirmed"],
     },
   },
 };

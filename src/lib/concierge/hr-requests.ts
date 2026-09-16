@@ -101,6 +101,7 @@ async function createHrRequest(
   category: string | null,
   note: string,
   conversationId: string,
+  urgent = false,
 ): Promise<{ ok: boolean; requestId?: string; message?: string }> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
@@ -112,6 +113,7 @@ async function createHrRequest(
       note: truncateNote(note),
       conversation_id: conversationId,
       status: "open",
+      urgent,
     })
     .select("id")
     .single();
@@ -130,6 +132,15 @@ export function createMentorshipRequest(employeeId: string, focusArea: string | 
 /** The one write for coaching — same caveat as above. */
 export function createCoachingRequest(employeeId: string, note: string, conversationId: string) {
   return createHrRequest(employeeId, "coaching", null, note, conversationId);
+}
+
+/** The one write for escalation — same caveat as above. Marks the row
+ * urgent when category is "sensitive", mirroring escalate_to_hr's original
+ * unconditional behavior exactly (Showcase Hardening: escalation is now
+ * preview -> confirm gated like every other write here, but the DB row it
+ * eventually creates is unchanged). */
+export function createEscalation(employeeId: string, category: string, reason: string, conversationId: string) {
+  return createHrRequest(employeeId, "escalation", category, reason, conversationId, category === "sensitive");
 }
 
 /** Scoped to one employee only — used for "what's the status of my

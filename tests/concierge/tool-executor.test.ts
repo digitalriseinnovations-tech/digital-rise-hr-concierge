@@ -65,15 +65,22 @@ describe("Tool executor — the permission boundary", () => {
     expect(entries.every((e) => e.category === "mentorship")).toBe(true);
   });
 
-  it.skipIf(!hasCreds)("escalate_to_hr creates a real hr_requests row scoped to the calling employee only", async () => {
+  it.skipIf(!hasCreds)("escalate_to_hr creates a real hr_requests row scoped to the calling employee only (preview then confirm — Showcase Hardening)", async () => {
     if (!testEmployeeId) await setup();
+    const ctx = { employeeId: testEmployeeId!, employeeFullName: "Sarah Ahmed", conversationId: testConversationId! };
+    const reason = "Test escalation from automated test suite";
+
+    const preview = await executeTool("escalate_to_hr", { category: "general", reason, confirmed: false }, ctx);
+    expect((preview.output as any).status).toBe("preview");
+    const token = (preview.output as any).confirmation_token as string;
+
     const result = await executeTool(
       "escalate_to_hr",
-      { category: "general", reason: "Test escalation from automated test suite" },
-      { employeeId: testEmployeeId!, employeeFullName: "Sarah Ahmed", conversationId: testConversationId! },
+      { category: "general", reason, confirmed: true, confirmation_token: token },
+      ctx,
     );
     expect(result.isError).toBe(false);
-    const requestId = (result.output as any).requestId as string;
+    const requestId = (result.output as any).request_id as string;
     expect(requestId).toBeTruthy();
     createdHrRequestIds.push(requestId);
 
@@ -83,19 +90,28 @@ describe("Tool executor — the permission boundary", () => {
     expect(row?.status).toBe("open");
   });
 
-  it.skipIf(!hasCreds)("escalate_to_hr never writes another employee's id, regardless of tool input", async () => {
+  it.skipIf(!hasCreds)("escalate_to_hr never writes another employee's id, regardless of tool input (preview then confirm)", async () => {
     if (!testEmployeeId) await setup();
+    const ctx = { employeeId: testEmployeeId!, employeeFullName: "Sarah Ahmed", conversationId: testConversationId! };
+    const reason = "test";
     // Even if a prompt-injected tool call tried to smuggle a different
     // employee_id through the input, the executor's context (ctx.employeeId,
     // resolved server-side from the session, never from the model's input)
     // is what gets written — the tool schema doesn't even accept an
     // employee_id field, so there's nothing for the model to pass here.
+    const preview = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason, employee_id: "00000000-0000-0000-0000-000000000000", confirmed: false },
+      ctx,
+    );
+    const token = (preview.output as any).confirmation_token as string;
+
     const result = await executeTool(
       "escalate_to_hr",
-      { category: "general", reason: "test", employee_id: "00000000-0000-0000-0000-000000000000" },
-      { employeeId: testEmployeeId!, employeeFullName: "Sarah Ahmed", conversationId: testConversationId! },
+      { category: "general", reason, employee_id: "00000000-0000-0000-0000-000000000000", confirmed: true, confirmation_token: token },
+      ctx,
     );
-    const requestId = (result.output as any).requestId as string;
+    const requestId = (result.output as any).request_id as string;
     createdHrRequestIds.push(requestId);
     const { data: row } = await client!.from("hr_requests").select("employee_id").eq("id", requestId).single();
     expect(row?.employee_id).toBe(testEmployeeId);

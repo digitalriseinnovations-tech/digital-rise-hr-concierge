@@ -286,6 +286,150 @@ describe("create_coaching_request — preview-then-confirm, never writes on the 
   });
 });
 
+describe("escalate_to_hr — preview-then-confirm, never writes or emails on the first call", () => {
+  // Showcase Hardening: escalation used to fire an unconditional DB write +
+  // real email from a single conversational request. It now uses the exact
+  // same preview -> confirm -> cryptographic-token pattern proven above for
+  // mentorship/coaching, reusing the SAME hr_requests table and the SAME
+  // confirmation.ts utility — not a second implementation. The email guard
+  // in src/lib/email.ts (isTestRuntime()) means even the "confirmed" tests
+  // below never touch real SMTP, exactly like every other test in this
+  // suite that reaches sendHrEscalationNotification.
+
+  it.skipIf(!hasCreds)("without confirmed=true, returns a preview and creates NOTHING", async () => {
+    const reason = "Wants to discuss a private matter (test C1).";
+    const before = (
+      await client!
+        .from("hr_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", danielId!)
+        .eq("request_type", "escalation")
+        .eq("note", reason)
+    ).count;
+
+    const result = await executeTool("escalate_to_hr", { category: "sensitive", reason, confirmed: false }, danielCtx());
+    const output = result.output as any;
+    expect(output.status).toBe("preview");
+    expect(output.category).toBe("sensitive");
+    expect(typeof output.confirmation_token).toBe("string");
+
+    const after = (
+      await client!
+        .from("hr_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("employee_id", danielId!)
+        .eq("request_type", "escalation")
+        .eq("note", reason)
+    ).count;
+    expect(after).toBe(before ?? 0);
+  });
+
+  it.skipIf(!hasCreds)("confirmed=true WITHOUT a valid token falls back to preview — never creates a request (this is also what 'no'/cancel effectively does: nothing is ever written unless a real confirm happens)", async () => {
+    const result = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason: "Test escalation (test C2).", confirmed: true, confirmation_token: "forged-or-missing" },
+      danielCtx(),
+    );
+    expect((result.output as any).status).toBe("preview");
+  });
+
+  it.skipIf(!hasCreds)("a token from a DIFFERENT reason cannot authorize this one", async () => {
+    const staleToken = computeHrRequestToken(danielId!, "escalation", "general", "A different reason entirely (test C3-stale).");
+    const result = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason: "Test escalation (test C3).", confirmed: true, confirmation_token: staleToken },
+      danielCtx(),
+    );
+    expect((result.output as any).status).toBe("preview");
+  });
+
+  it.skipIf(!hasCreds)("a token computed for a DIFFERENT employee cannot authorize this employee's escalation", async () => {
+    const staleToken = computeHrRequestToken(priyaId!, "escalation", "general", "Test escalation (test C4).");
+    const result = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason: "Test escalation (test C4).", confirmed: true, confirmation_token: staleToken },
+      danielCtx(),
+    );
+    expect((result.output as any).status).toBe("preview");
+  });
+
+  it.skipIf(!hasCreds)("confirmed=true WITH the correct token creates a real hr_requests row and attempts the HR notification — status='open', urgent=true for category='sensitive'", async () => {
+    const reason = "Wants to discuss a private matter (test C5).";
+    const preview = await executeTool("escalate_to_hr", { category: "sensitive", reason, confirmed: false }, danielCtx());
+    const token = (preview.output as any).confirmation_token as string;
+
+    const result = await executeTool(
+      "escalate_to_hr",
+      { category: "sensitive", reason, confirmed: true, confirmation_token: token },
+      danielCtx(),
+    );
+    const output = result.output as any;
+    expect(output.status).toBe("submitted");
+    expect(output.request_id).toBeTruthy();
+    expect(typeof output.notified).toBe("boolean");
+    createdRequestIds.push(output.request_id);
+
+    const { data: row } = await client!
+      .from("hr_requests")
+      .select("employee_id, request_type, status, category, note, urgent")
+      .eq("id", output.request_id)
+      .single();
+    expect(row?.employee_id).toBe(danielId);
+    expect(row?.request_type).toBe("escalation");
+    expect(row?.status).toBe("open");
+    expect(row?.category).toBe("sensitive");
+    expect(row?.note).toBe(reason);
+    expect(row?.urgent).toBe(true);
+  });
+
+  it.skipIf(!hasCreds)("retrying the same confirmed call does not create a duplicate open request or a second email attempt (idempotency)", async () => {
+    const reason = "Test escalation (test C6).";
+    const preview = await executeTool("escalate_to_hr", { category: "general", reason, confirmed: false }, danielCtx());
+    const token = (preview.output as any).confirmation_token as string;
+    const args = { category: "general", reason, confirmed: true, confirmation_token: token };
+
+    const first = await executeTool("escalate_to_hr", args, danielCtx());
+    const firstId = (first.output as any).request_id as string;
+    createdRequestIds.push(firstId);
+
+    const second = await executeTool("escalate_to_hr", args, danielCtx());
+    const secondOutput = second.output as any;
+    expect(secondOutput.status).toBe("already_open");
+    expect(secondOutput.request_id).toBe(firstId);
+
+    const { count } = await client!
+      .from("hr_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("employee_id", danielId!)
+      .eq("request_type", "escalation")
+      .eq("note", reason);
+    expect(count).toBe(1);
+  });
+
+  it.skipIf(!hasCreds)("a genuinely different follow-up escalation (different reason) is still allowed, not blocked as a duplicate", async () => {
+    const reason1 = "Test escalation (test C7a).";
+    const reason2 = "A different matter entirely (test C7b).";
+
+    const preview1 = await executeTool("escalate_to_hr", { category: "general", reason: reason1, confirmed: false }, danielCtx());
+    const r1 = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason: reason1, confirmed: true, confirmation_token: (preview1.output as any).confirmation_token },
+      danielCtx(),
+    );
+    createdRequestIds.push((r1.output as any).request_id);
+
+    const preview2 = await executeTool("escalate_to_hr", { category: "general", reason: reason2, confirmed: false }, danielCtx());
+    const r2 = await executeTool(
+      "escalate_to_hr",
+      { category: "general", reason: reason2, confirmed: true, confirmation_token: (preview2.output as any).confirmation_token },
+      danielCtx(),
+    );
+    expect((r2.output as any).status).toBe("submitted");
+    createdRequestIds.push((r2.output as any).request_id);
+    expect((r2.output as any).request_id).not.toBe((r1.output as any).request_id);
+  });
+});
+
 describe("Mentorship/coaching — no admin/approval/matching tool exists", () => {
   it("no assign_mentor, approve_coaching, or match_mentor tool is registered", () => {
     for (const forbidden of ["assign_mentor", "approve_coaching", "match_mentor", "set_mentorship_status", "set_coaching_status"]) {
