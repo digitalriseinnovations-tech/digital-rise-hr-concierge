@@ -12,10 +12,21 @@ import { runConciergeTurn, startConversation } from "../../src/lib/concierge/orc
  * that the system prompt + tool design actually produce the intended
  * behavior from the real model. Slower and non-free; kept to a small,
  * high-value set.
+ *
+ * SAFETY: every test in this file is a live-model evaluation and is SKIPPED
+ * by default. Merely having ANTHROPIC_API_KEY set (e.g. via .env.local,
+ * which every `npx vitest run` loads) is NOT enough to run these — that was
+ * the exact defect that let normal test runs rack up real Anthropic usage.
+ * Running these for real requires deliberately setting
+ * CONCIERGE_ALLOW_LIVE_MODEL_TESTS=1 for that invocation. See
+ * src/lib/concierge/anthropic-client.ts, which independently enforces the
+ * same boundary at the SDK-client layer regardless of this file's own gate.
  */
 
+const liveModelTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const hasCreds = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  liveModelTestsEnabled &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.SUPABASE_SERVICE_ROLE_KEY &&
     process.env.ANTHROPIC_API_KEY,
 );

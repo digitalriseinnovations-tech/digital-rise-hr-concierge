@@ -18,6 +18,15 @@ import { describe, expect, it } from "vitest";
 
 const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 const hasCreds = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+// SAFETY: a locally running `npm run dev` server is a SEPARATE OS process
+// from Vitest — it does NOT have process.env.VITEST set, so the guard in
+// src/lib/concierge/anthropic-client.ts does not see it as a test runtime
+// and would NOT block a real Anthropic call made from inside that server
+// process. The one test below that POSTs to /api/concierge/message (a real
+// chat turn) is therefore gated on the same explicit live-model opt-in as
+// every other live-model test, so default `npx vitest run` can never
+// accidentally cause a running dev server to spend real Anthropic credits.
+const liveModelTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 
 async function serverIsUp(): Promise<boolean> {
   try {
@@ -48,7 +57,7 @@ describe("Concierge HTTP routes are actually reachable (not middleware-blocked)"
     expect(res.headers.get("content-type")).toMatch(/application\/json/);
   });
 
-  it.skipIf(!hasCreds)("a fully valid identify -> message round trip reaches the real route and returns a grounded reply", async () => {
+  it.skipIf(!hasCreds || !liveModelTestsEnabled)("a fully valid identify -> message round trip reaches the real route and returns a grounded reply", async () => {
     if (!(await serverIsUp())) return;
     const idRes = await fetch(`${baseUrl}/api/concierge/identify`, {
       method: "POST",

@@ -14,10 +14,21 @@ import { claimsFalseApproval, claimsFalseApprovalOrEnrollment, claimsFalseApprov
  * Uses ephemeral test-only training programs (created here, deleted in
  * afterAll) rather than the real seeded catalogue, so a live enrollment
  * can never leave the shared demo project's real seat counts mutated.
+ *
+ * SAFETY: every test in this file is a live-model evaluation and is SKIPPED
+ * by default — ANTHROPIC_API_KEY merely being set (e.g. via .env.local,
+ * loaded by every `npx vitest run`) is NOT enough to run these. Requires
+ * deliberately setting CONCIERGE_ALLOW_LIVE_MODEL_TESTS=1. See
+ * src/lib/concierge/anthropic-client.ts for the independent SDK-layer
+ * enforcement of the same boundary.
  */
 
+const liveModelTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const hasCreds = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.ANTHROPIC_API_KEY,
+  liveModelTestsEnabled &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.SUPABASE_SERVICE_ROLE_KEY &&
+    process.env.ANTHROPIC_API_KEY,
 );
 
 const client = hasCreds

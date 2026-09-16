@@ -10,9 +10,36 @@ import Anthropic from "@anthropic-ai/sdk";
  * default — not Sonnet.
  */
 
+// Test-runtime safety boundary — NOT a product/deployment setting (do not
+// base this on APP_PRODUCT_MODE), mirroring the equivalent guard in
+// src/lib/email.ts. Vitest sets process.env.VITEST for every test process
+// automatically, with no per-file opt-in required; NODE_ENV "test" is
+// checked too as a second, independent signal.
+export function isTestRuntime(): boolean {
+  return Boolean(process.env.VITEST) || process.env.NODE_ENV === "test";
+}
+
+// The ONLY way a real, network-capable Anthropic client can be constructed
+// under test — must be set deliberately per invocation, never left on, and
+// is meaningless (ignored) outside a test runtime. This must stay false for
+// every ordinary `npx vitest run`, regardless of what real-looking
+// ANTHROPIC_API_KEY happens to be present in .env.local, since that same
+// file is loaded by both `npm run dev` and every test run (see
+// tests/setup/load-env.ts).
+export function liveModelTestsExplicitlyAllowed(): boolean {
+  return process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
+}
+
 let cachedClient: Anthropic | null = null;
 
 export function getAnthropicClient(): Anthropic {
+  if (isTestRuntime() && !liveModelTestsExplicitlyAllowed()) {
+    throw new Error(
+      "[concierge] getAnthropicClient() blocked under test — real Anthropic client construction requires " +
+        "CONCIERGE_ALLOW_LIVE_MODEL_TESTS=1 for this invocation. Default `npx vitest run` must never call the " +
+        "real Anthropic API, even when a real ANTHROPIC_API_KEY is present in .env.local.",
+    );
+  }
   if (cachedClient) return cachedClient;
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {

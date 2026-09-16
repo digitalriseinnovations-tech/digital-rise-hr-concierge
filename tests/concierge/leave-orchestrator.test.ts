@@ -10,10 +10,19 @@ import { claimsFalseApproval } from "./test-helpers";
  * guarantees: the model never creates a request from a single mention of
  * dates, always previews + asks confirmation first, and can never claim
  * an approval it didn't get.
+ *
+ * SAFETY: every test in this file is a live-model evaluation and is SKIPPED
+ * by default — ANTHROPIC_API_KEY merely being set (e.g. via .env.local,
+ * loaded by every `npx vitest run`) is NOT enough to run these. Requires
+ * deliberately setting CONCIERGE_ALLOW_LIVE_MODEL_TESTS=1. See
+ * src/lib/concierge/anthropic-client.ts for the independent SDK-layer
+ * enforcement of the same boundary.
  */
 
+const liveModelTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const hasCreds = Boolean(
-  process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  liveModelTestsEnabled &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.SUPABASE_SERVICE_ROLE_KEY &&
     process.env.ANTHROPIC_API_KEY,
 );

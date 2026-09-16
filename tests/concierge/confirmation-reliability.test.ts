@@ -362,7 +362,17 @@ describe("looksLikeUnbackedActionNarration — the tool-forcing retry trigger", 
 });
 
 describe("Reliability of the full preview -> 'yes' -> submit flow (empirical, repeated)", () => {
-  const hasFullCreds = hasCreds && Boolean(process.env.ANTHROPIC_API_KEY);
+  // SAFETY: this is a live-model evaluation (5 real Anthropic calls) and is
+  // SKIPPED by default — ANTHROPIC_API_KEY merely being set (e.g. via
+  // .env.local, loaded by every `npx vitest run`) is NOT enough to run it.
+  // Requires deliberately setting CONCIERGE_ALLOW_LIVE_MODEL_TESTS=1. See
+  // src/lib/concierge/anthropic-client.ts for the independent SDK-layer
+  // enforcement of the same boundary. Every other test in this file is a
+  // deterministic, non-live test of getPendingConfirmation/
+  // isClearAffirmative/looksLikeUnbackedActionNarration and is unaffected —
+  // it keeps running by default under plain `hasCreds` (Supabase only).
+  const liveModelTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
+  const hasFullCreds = liveModelTestsEnabled && hasCreds && Boolean(process.env.ANTHROPIC_API_KEY);
   let sarahId: string;
   const conversationIds: string[] = [];
   const leaveRequestIds: string[] = [];
