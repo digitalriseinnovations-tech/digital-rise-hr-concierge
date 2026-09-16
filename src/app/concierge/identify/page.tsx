@@ -3,7 +3,8 @@ import { IdentifyForm } from "./form";
 export const metadata = {
   title: "HR Concierge — Digital Rise",
   // Explicit override — without this, Next.js metadata merging inherits
-  // the ROOT layout's "Verofax internal finance management..." description.
+  // the ROOT layout's product-mode-driven description (see
+  // src/app/layout.tsx / src/lib/product-mode.ts).
   description: "Digital Rise HR Concierge — verify your identity to continue.",
   robots: { index: false, follow: false },
 };

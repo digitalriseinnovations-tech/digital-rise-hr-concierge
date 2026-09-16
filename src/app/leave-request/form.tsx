@@ -30,7 +30,7 @@ function daysBetween(start: string, end: string): number {
   return Math.round(diffMs / (1000 * 60 * 60 * 24)) + 1;
 }
 
-export function LeaveRequestForm({ employees }: { employees: Employee[] }) {
+export function LeaveRequestForm({ employees, emailPlaceholder }: { employees: Employee[]; emailPlaceholder: string }) {
   const [employeeId, setEmployeeId] = useState("");
   const [leaveType, setLeaveType] = useState("annual");
   const [startDate, setStartDate] = useState("");
@@ -156,7 +156,7 @@ export function LeaveRequestForm({ employees }: { employees: Employee[] }) {
           required
           value={employeeEmail}
           onChange={(e) => setEmployeeEmail(e.target.value)}
-          placeholder="you@verofax.com"
+          placeholder={emailPlaceholder}
           className="input-field"
         />
         <p className="text-xs text-slate-500 mt-1.5">You'll receive the approval decision here.</p>

@@ -1,8 +1,11 @@
 import { createServiceClient } from "@/lib/supabase/service";
+import { getProductBranding } from "@/lib/product-mode";
 import { LeaveRequestForm } from "./form";
 
+const branding = getProductBranding();
+
 export const metadata = {
-  title: "Submit Leave Request — Verofax",
+  title: `Submit Leave Request — ${branding.pageTitle}`,
   robots: { index: false, follow: false },
 };
 
@@ -38,7 +41,7 @@ export default async function LeaveRequestPage() {
     <div className="min-h-screen" style={{ background: "linear-gradient(135deg, #f6f9ff 0%, #dbe4f3 100%)" }}>
       <div className="max-w-[640px] mx-auto px-6 py-12">
         <header className="text-center mb-8">
-          <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-navy-700 mb-2">VEROFAX</div>
+          <div className="text-[11px] font-bold tracking-[0.2em] uppercase text-navy-700 mb-2">{branding.name.toUpperCase()}</div>
           <h1 className="font-display text-3xl font-extrabold text-navy-700 mb-2">Submit Leave Request</h1>
           <p className="text-sm text-slate-500">Your manager will receive an email and decide. You'll be notified once approved or rejected.</p>
         </header>
@@ -65,11 +68,11 @@ export default async function LeaveRequestPage() {
             </details>
           </div>
         ) : (
-          <LeaveRequestForm employees={employees} />
+          <LeaveRequestForm employees={employees} emailPlaceholder={branding.emailPlaceholder} />
         )}
 
         <p className="text-xs text-slate-400 text-center mt-8">
-          Verofax Finance Platform · Confidential internal use
+          {branding.pageFooterLine}
         </p>
       </div>
     </div>

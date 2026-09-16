@@ -43,6 +43,19 @@ export interface ProductBranding {
   /** Fallback "something went wrong, contact us" address — only used if
    * the request itself has no better contact on file. */
   contactEmail: string;
+  /** Main heading on the shared /login staff sign-in page. */
+  loginHeading: string;
+  /** Optional short tagline shown under the login heading. Null = omit. */
+  loginSupportingCopy: string | null;
+  /** Smaller access-restriction line under the login heading/tagline. */
+  loginAccessCopy: string;
+  /** Small note at the very bottom of the login page. */
+  loginFooterNote: string;
+  /** Shown when a signed-in Supabase user has no active finance_users row. */
+  noAccessMessage: string;
+  /** Placeholder text for "your email" inputs on public-facing forms
+   * (login, the public leave-request form). */
+  emailPlaceholder: string;
 }
 
 const HR_BRANDING: ProductBranding = {
@@ -53,6 +66,12 @@ const HR_BRANDING: ProductBranding = {
   pageFooterLine: "Digital Rise HR Concierge · Confidential internal use",
   pageTitle: "Digital Rise HR Concierge",
   contactEmail: process.env.HR_CONCIERGE_ESCALATION_EMAIL || "hr@example.com",
+  loginHeading: "HR Concierge",
+  loginSupportingCopy: "AI-powered employee support for everyday HR requests",
+  loginAccessCopy: "Secure access for employees and HR teams",
+  loginFooterNote: "Digital Rise HR Concierge · Secure employee support",
+  noAccessMessage: "Your account is not authorized for this application.",
+  emailPlaceholder: "you@company.com",
 };
 
 const FINANCE_BRANDING: ProductBranding = {
@@ -63,6 +82,12 @@ const FINANCE_BRANDING: ProductBranding = {
   pageFooterLine: "Verofax Finance Platform · Confidential internal use",
   pageTitle: "Verofax",
   contactEmail: "hr@verofax.com",
+  loginHeading: "Finance Platform",
+  loginSupportingCopy: null,
+  loginAccessCopy: "Restricted access · finance & HR teams only",
+  loginFooterNote: "Confidential system. Unauthorized access prohibited.",
+  noAccessMessage: "Your account is not authorized for the finance platform.",
+  emailPlaceholder: "you@verofax.com",
 };
 
 export function getProductBranding(): ProductBranding {

@@ -1,9 +1,12 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { getProductBranding } from "@/lib/product-mode";
+
+const branding = getProductBranding();
 
 export const metadata: Metadata = {
-  title: "Verofax Finance",
-  description: "Verofax internal finance management. Restricted access.",
+  title: branding.fullName,
+  description: `${branding.fullName}. Restricted access.`,
   robots: { index: false, follow: false },
 };
 

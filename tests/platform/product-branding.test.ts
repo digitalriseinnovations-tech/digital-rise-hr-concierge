@@ -46,6 +46,36 @@ describe("getProductMode / getProductBranding", () => {
       expect(String(value)).not.toMatch(/northstar/i);
     }
   });
+
+  it("HR mode never contains 'Verofax' in any field, including the /login page fields (the standalone deployment's residual-branding audit)", () => {
+    process.env.APP_PRODUCT_MODE = "hr";
+    const branding = getProductBranding();
+    for (const value of Object.values(branding)) {
+      expect(String(value).toLowerCase()).not.toContain("verofax");
+    }
+  });
+
+  it("HR mode /login copy matches the approved Digital Rise HR Concierge copy exactly", () => {
+    process.env.APP_PRODUCT_MODE = "hr";
+    const branding = getProductBranding();
+    expect(branding.loginHeading).toBe("HR Concierge");
+    expect(branding.loginSupportingCopy).toBe("AI-powered employee support for everyday HR requests");
+    expect(branding.loginAccessCopy).toBe("Secure access for employees and HR teams");
+    expect(branding.loginFooterNote).toBe("Digital Rise HR Concierge · Secure employee support");
+    expect(branding.emailPlaceholder).toBe("you@company.com");
+    expect(branding.noAccessMessage).toBe("Your account is not authorized for this application.");
+  });
+
+  it("finance (default) mode /login copy is provably unchanged by this fix", () => {
+    delete process.env.APP_PRODUCT_MODE;
+    const branding = getProductBranding();
+    expect(branding.loginHeading).toBe("Finance Platform");
+    expect(branding.loginSupportingCopy).toBeNull();
+    expect(branding.loginAccessCopy).toBe("Restricted access · finance & HR teams only");
+    expect(branding.loginFooterNote).toBe("Confidential system. Unauthorized access prohibited.");
+    expect(branding.emailPlaceholder).toBe("you@verofax.com");
+    expect(branding.noAccessMessage).toBe("Your account is not authorized for the finance platform.");
+  });
 });
 
 const BASE_REQUEST_ARGS = {

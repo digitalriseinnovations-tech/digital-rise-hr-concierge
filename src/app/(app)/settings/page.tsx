@@ -35,7 +35,7 @@ export default async function SettingsPage() {
 
       <p className="text-xs text-slate-500 mt-4">
         To add a new user: create their auth account in Supabase dashboard, then run:<br/>
-        <code className="text-[11px] bg-slate-100 px-2 py-1 rounded mt-1 inline-block">{`insert into finance_users (email, full_name, role) values ('them@verofax.com', 'Their Name', 'finance');`}</code>
+        <code className="text-[11px] bg-slate-100 px-2 py-1 rounded mt-1 inline-block">{`insert into finance_users (email, full_name, role) values ('them@example.com', 'Their Name', 'finance');`}</code>
       </p>
     </div>
   );

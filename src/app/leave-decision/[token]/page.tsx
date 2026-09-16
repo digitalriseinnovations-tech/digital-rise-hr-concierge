@@ -8,8 +8,9 @@ const branding = getProductBranding();
 export const metadata = {
   title: `Leave Decision — ${branding.pageTitle}`,
   // Explicit override — without this, Next.js metadata merging inherits
-  // the ROOT layout's "Verofax internal finance management..." description
-  // into this page too, since only `title` was overridden.
+  // the ROOT layout's product-mode-driven description (see
+  // src/app/layout.tsx / src/lib/product-mode.ts) into this page too,
+  // since only `title` was overridden.
   description: `${branding.fullName}. Restricted access.`,
   robots: { index: false, follow: false },
 };
