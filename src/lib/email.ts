@@ -9,8 +9,27 @@ import { getProductBranding } from "@/lib/product-mode";
 // https://myaccount.google.com/apppasswords (2FA must be on for the Gmail account)
 // ============================================================================
 
+// Test-runtime safety boundary — NOT a product/deployment setting (do not
+// base this on APP_PRODUCT_MODE). Vitest sets process.env.VITEST for every
+// test process automatically, with no per-file opt-in required; NODE_ENV
+// "test" is checked too as a second, independent signal. This must stay
+// true for every test run regardless of what real-looking Gmail credentials
+// happen to be present in .env.local, since that same file is loaded by
+// both `npm run dev` and `npx vitest run` (see tests/setup/load-env.ts).
+export function isTestRuntime(): boolean {
+  return Boolean(process.env.VITEST) || process.env.NODE_ENV === "test";
+}
+
 let transporter: Transporter | null = null;
 function getTransport(): Transporter {
+  // Defense in depth: even if some future caller reaches getTransport()
+  // directly instead of going through send()'s guard, a real SMTP
+  // transport must never be constructed under test.
+  if (isTestRuntime()) {
+    throw new Error(
+      "[email] getTransport() must not be called under test — real SMTP transport creation is blocked. Use send(), which short-circuits before reaching this function.",
+    );
+  }
   if (transporter) return transporter;
 
   const user = process.env.GMAIL_USER;
@@ -48,6 +67,11 @@ interface SendArgs {
 }
 
 async function send({ to, subject, html, replyTo }: SendArgs) {
+  if (isTestRuntime()) {
+    // Never touch getTransport()/sendMail() under test — no real SMTP
+    // connection is created. Deliberately no recipient/subject/body logged.
+    return { ok: true, id: "test-dry-run", dryRun: true as const };
+  }
   try {
     const user = process.env.GMAIL_USER!;
     const fromName = process.env.GMAIL_FROM_NAME || getProductBranding().fullName;
