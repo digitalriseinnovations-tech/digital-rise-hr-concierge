@@ -32,20 +32,37 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId, message: trimmed }),
       });
-      const body = await res.json();
 
-      if (!res.ok) {
-        setError(body.error || "Something went wrong.");
+      // The response arrived (this is not a network failure), but its body
+      // might not be valid JSON — e.g. an unhandled server error that
+      // reached Next.js's own generic error page instead of our route's
+      // own JSON response. Parsing that separately from the fetch() itself
+      // means a server-side bug shows an accurate message here instead of
+      // being misreported as "Network error".
+      let body: { error?: string; conversationId?: string; reply?: string; usedKnowledge?: boolean; escalated?: boolean } | null = null;
+      try {
+        body = await res.json();
+      } catch {
+        setError("Something went wrong on our side. Please try again.");
         setLoading(false);
         return;
       }
 
-      setConversationId(body.conversationId);
+      if (!res.ok) {
+        setError(body?.error || "Something went wrong.");
+        setLoading(false);
+        return;
+      }
+
+      setConversationId(body!.conversationId!);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: body.reply, usedKnowledge: body.usedKnowledge, escalated: body.escalated },
+        { role: "assistant", content: body!.reply!, usedKnowledge: body!.usedKnowledge, escalated: body!.escalated },
       ]);
     } catch {
+      // fetch() itself threw — a genuine network-level failure (offline,
+      // DNS, CORS, etc), distinct from the response-arrived-but-bad-body
+      // case handled above.
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);

@@ -46,7 +46,17 @@ export async function POST(request: Request) {
 
   let conversationId = body.conversationId;
   if (!conversationId) {
-    conversationId = await startConversation(employee.id);
+    try {
+      conversationId = await startConversation(employee.id);
+    } catch {
+      // startConversation() already logged the real Supabase diagnostic
+      // server-side (see orchestrator.ts) — the browser only ever gets
+      // this generic message, never the underlying error detail. Returning
+      // valid JSON here (instead of letting the exception reach Next.js's
+      // own generic error handler) is what lets the frontend show a real
+      // message instead of a misleading "Network error".
+      return NextResponse.json({ error: "Unable to start the conversation. Please try again." }, { status: 500 });
+    }
   }
 
   const result = await runConciergeTurn({

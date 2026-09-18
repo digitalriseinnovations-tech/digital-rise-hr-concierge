@@ -650,6 +650,17 @@ export async function startConversation(employeeId: string): Promise<string> {
     .single();
 
   if (error || !data) {
+    // Diagnostic-only, server-side log — narrowly scoped to the Supabase
+    // client library's own error shape (message/code/details/hint), never
+    // the employee identity, message content, or any credential/token.
+    // This is what makes the actual failure visible in Vercel's function
+    // logs instead of only ever seeing the generic message thrown below.
+    console.error("[concierge] startConversation failed", {
+      message: error?.message,
+      code: error?.code,
+      details: error?.details,
+      hint: error?.hint,
+    });
     throw new Error("Could not start a new Concierge conversation.");
   }
   return data.id;
