@@ -219,6 +219,26 @@ function escapeHtml(s: string): string {
 // Public API — same shape as before, just different transport
 // ============================================================================
 
+// Demo/showcase safety valve — deployment-level, server-only, never a
+// hardcoded address. When set, every manager-notification email this
+// function sends is DELIVERED to this address instead of the employee's
+// real assigned manager. Nothing else changes: the email's own content
+// (greeting, "Hi <manager first name>,") still reflects the REAL manager,
+// leave_requests.manager_email still stores the REAL manager, and the
+// Concierge's "Approver: X" preview/confirmation text still names the
+// REAL manager — this only redirects where the message is actually
+// delivered, so a showcase deployment never emails a real, externally-
+// registered domain it doesn't control. Unset (the default) in any real
+// customer deployment, where this function behaves exactly as before.
+export function resolveManagerEmailDeliveryTarget(realManagerEmail: string): string {
+  const demoOverride = process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL?.trim();
+  if (demoOverride) {
+    console.log("[email] demo manager-notification override active — this leave-request email is being routed to the configured demo address instead of the employee's real assigned manager. The logical manager assignment is unchanged.");
+    return demoOverride;
+  }
+  return realManagerEmail;
+}
+
 export async function sendLeaveRequestToManager(args: {
   managerEmail: string;
   managerName?: string;
@@ -234,7 +254,7 @@ export async function sendLeaveRequestToManager(args: {
   const approveUrl = `${APP_URL}/leave-decision/${args.approvalToken}?action=approve`;
   const rejectUrl = `${APP_URL}/leave-decision/${args.approvalToken}?action=reject`;
   return send({
-    to: args.managerEmail,
+    to: resolveManagerEmailDeliveryTarget(args.managerEmail),
     subject: `Leave request from ${args.employeeName} · ${args.startDate} → ${args.endDate}`,
     html: leaveRequestEmail({
       managerName: args.managerName || "there",

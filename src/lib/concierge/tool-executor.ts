@@ -14,6 +14,7 @@ import {
   getLeaveRequestStatus,
   findExistingPendingRequest,
   submitLeaveRequest,
+  resolveCurrentManagerAssignment,
 } from "./leave";
 import {
   listTrainingPrograms,
@@ -300,12 +301,22 @@ async function executeCreateLeaveRequest(input: unknown, ctx: ToolExecutionConte
   const { startDate, endDate } = resolved;
   const daysCount = calculateDaysCount(startDate, endDate);
 
+  // The SINGLE authoritative source for "who approves this" — read fresh
+  // from employees.manager_email, never stated by the model and never
+  // reused from an earlier turn. Bound into the confirmation token below,
+  // so if the manager assignment changes between this preview and the
+  // employee's "yes", the token simply stops verifying and this falls
+  // back to a fresh preview — never a silent submission to a different
+  // manager than the one shown.
+  const manager = await resolveCurrentManagerAssignment(ctx.employeeId);
+
   const details = {
     employeeId: ctx.employeeId,
     startDate,
     endDate,
     leaveType: args.leave_type,
     daysCount,
+    managerEmail: manager.managerEmail,
   };
 
   const balance = await getMyLeaveBalance(ctx.employeeId, args.leave_type);
@@ -313,9 +324,10 @@ async function executeCreateLeaveRequest(input: unknown, ctx: ToolExecutionConte
 
   // Step 1: no valid confirmation yet -> return a preview only. Nothing is
   // written. This is the ONLY path when confirmed is not true, or when a
-  // stale/mismatched token is presented (e.g. from a different date range
-  // — the token simply won't verify, so it silently falls back to preview
-  // rather than either erroring or, worse, proceeding anyway).
+  // stale/mismatched token is presented (e.g. from a different date range,
+  // a different manager assignment, etc. — the token simply won't verify,
+  // so it silently falls back to preview rather than either erroring or,
+  // worse, proceeding anyway).
   if (!args.confirmed || !verifyConfirmationToken(args.confirmation_token, details)) {
     const token = computeConfirmationToken(details);
     return {
@@ -329,8 +341,15 @@ async function executeCreateLeaveRequest(input: unknown, ctx: ToolExecutionConte
         end_date: endDate,
         current_remaining_days: remainingBefore,
         remaining_after_this_request: remainingBefore - daysCount,
+        // The ONLY source of truth for the approver's name shown in the
+        // preview — the model must read this field, never invent or
+        // recall a name on its own (see prompt.ts's grounding rule).
+        manager_display_name: manager.managerDisplayName,
+        manager_assigned: manager.managerEmail !== "",
         confirmation_token: token,
-        message: "This is a PREVIEW only — nothing has been submitted. Ask the employee to explicitly confirm, then call this tool again with confirmed=true and this exact confirmation_token.",
+        message: manager.managerEmail
+          ? "This is a PREVIEW only — nothing has been submitted. Ask the employee to explicitly confirm, then call this tool again with confirmed=true and this exact confirmation_token."
+          : "This employee has no manager currently assigned — this cannot be submitted until HR assigns one. Do not confirm this.",
       },
       isError: false,
     };

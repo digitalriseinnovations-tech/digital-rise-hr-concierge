@@ -1,8 +1,9 @@
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, afterEach } from "vitest";
 import { createClient } from "@supabase/supabase-js";
 import { runConciergeTurn, startConversation, reconcileReplyWithRealOutcome, isClearAffirmative } from "../../src/lib/concierge/orchestrator";
 import { executeTool } from "../../src/lib/concierge/tool-executor";
-import { computeConfirmationToken } from "../../src/lib/concierge/leave";
+import { computeConfirmationToken, verifyConfirmationToken, resolveCurrentManagerAssignment } from "../../src/lib/concierge/leave";
+import { resolveManagerEmailDeliveryTarget } from "../../src/lib/email";
 
 /**
  * Production incident: a real employee's confirmed leave submission
@@ -176,7 +177,10 @@ describe("Leave confirmation — transactional messaging honesty", () => {
 describe("Leave confirmation — a failed submission never claims success", () => {
   it.skipIf(!hasCreds)("confirming for a nonexistent employee fails gracefully (status: failed, isError: true) — never status: submitted", async () => {
     const fakeEmployeeId = "00000000-0000-0000-0000-000000000000";
-    const details = { employeeId: fakeEmployeeId, startDate: "2027-06-01", endDate: "2027-06-01", leaveType: "annual" as const, daysCount: 1 };
+    // A nonexistent employee resolves to managerEmail: "" (no matching
+    // employees row) — the token must be computed against that same
+    // resolved value to verify at confirm time.
+    const details = { employeeId: fakeEmployeeId, startDate: "2027-06-01", endDate: "2027-06-01", leaveType: "annual" as const, daysCount: 1, managerEmail: "" };
     const token = computeConfirmationToken(details);
 
     const result = await executeTool(
@@ -205,5 +209,104 @@ describe("Leave confirmation — 'no' does not execute the pending action", () =
     // too, without needing a live-model turn to prove a negative.
     expect(isClearAffirmative("no")).toBe(false);
     expect(isClearAffirmative("not yet")).toBe(false);
+  });
+});
+
+/**
+ * Manager Routing & Approver Consistency Gate — the production preview
+ * displayed "Approver: Neha", which no tool or prompt instruction ever
+ * supplied (confirmed by code inspection: the preview output had no
+ * manager field at all) — the model invented it. Fixed by making
+ * employees.manager_email, via resolveCurrentManagerAssignment(), the
+ * single authoritative source for both the preview's displayed approver
+ * and the confirmed submission's actual manager, and binding that
+ * assignment into the confirmation token so a manager change between
+ * preview and "yes" invalidates the token instead of silently redirecting
+ * the approval.
+ */
+describe("Manager Routing — approver display is deterministic, never LLM-generated", () => {
+  it.skipIf(!hasCreds)("Sarah's approver resolves deterministically from employees.manager_email, not from any tool the model could improvise", async () => {
+    const first = await resolveCurrentManagerAssignment(sarahId!);
+    const second = await resolveCurrentManagerAssignment(sarahId!);
+    expect(first).toEqual(second);
+    expect(first.managerEmail).toBeTruthy();
+    expect(first.managerDisplayName).toBeTruthy();
+    // Documents the actual current assignment this task investigated —
+    // if this ever fails, the underlying employees.manager_email data
+    // changed, which is exactly the kind of drift the token-binding fix
+    // is designed to make safe (see the "different manager" test in
+    // leave.test.ts), not something this specific test should mask.
+    expect(first.managerDisplayName).toBe("Daniel");
+  });
+
+  it.skipIf(!hasCreds)("preview's manager_display_name and the confirmed submission's manager come from the same resolution — never independently drift", async () => {
+    const conversationId = await startConversation(sarahId!);
+    createdConversationIds.push(conversationId);
+    const ctx = { employeeId: sarahId!, employeeFullName: "Sarah Ahmed", conversationId };
+
+    const preview = await executeTool(
+      "create_leave_request",
+      { start_date: "2027-05-20", end_date: "2027-05-20", leave_type: "annual", confirmed: false },
+      ctx,
+    );
+    const previewOutput = preview.output as { manager_display_name: string; manager_assigned: boolean; confirmation_token: string };
+    expect(previewOutput.manager_assigned).toBe(true);
+    expect(previewOutput.manager_display_name).toBe("Daniel");
+
+    const confirmed = await executeTool(
+      "create_leave_request",
+      { start_date: "2027-05-20", end_date: "2027-05-20", leave_type: "annual", confirmed: true, confirmation_token: previewOutput.confirmation_token },
+      ctx,
+    );
+    const confirmedOutput = confirmed.output as { status: string; leave_request_id: string; manager_display_name: string };
+    expect(confirmedOutput.status).toBe("submitted");
+    expect(confirmedOutput.manager_display_name).toBe(previewOutput.manager_display_name);
+    createdLeaveRequestIds.push(confirmedOutput.leave_request_id);
+
+    const { data: row } = await client!.from("leave_requests").select("manager_email").eq("id", confirmedOutput.leave_request_id).single();
+    const authoritative = await resolveCurrentManagerAssignment(sarahId!);
+    expect(row?.manager_email).toBe(authoritative.managerEmail);
+  });
+
+  it("a manager change between preview and confirmation invalidates the token — never a silent redirect to a different manager (Phase 4)", () => {
+    const base = { employeeId: "emp-x", startDate: "2027-07-01", endDate: "2027-07-01", leaveType: "annual" as const, daysCount: 1, managerEmail: "manager-a@example.test" };
+    const previewToken = computeConfirmationToken(base);
+
+    // Same everything, EXCEPT the manager assignment changed in between —
+    // exactly what a fresh resolveCurrentManagerAssignment() call at
+    // confirm time would produce if HR reassigned the employee mid-
+    // conversation.
+    const stillVerifiesForOriginalManager = verifyConfirmationToken(previewToken, base);
+    const verifiesForNewManager = verifyConfirmationToken(previewToken, { ...base, managerEmail: "manager-b@example.test" });
+
+    expect(stillVerifiesForOriginalManager).toBe(true);
+    expect(verifiesForNewManager).toBe(false);
+  });
+});
+
+describe("Manager Routing — demo notification override (HR_CONCIERGE_DEMO_MANAGER_EMAIL)", () => {
+  const ORIGINAL = process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL;
+  afterEach(() => {
+    if (ORIGINAL === undefined) delete process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL;
+    else process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL = ORIGINAL;
+  });
+
+  it("with the override set, the email delivery target is the override address, never the real manager's", () => {
+    process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL = "demo-safe-inbox@example.test";
+    expect(resolveManagerEmailDeliveryTarget("daniel.carter@northstarglobal.com")).toBe("demo-safe-inbox@example.test");
+  });
+
+  it("with no override set, the email delivery target is the real manager's address unchanged", () => {
+    delete process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL;
+    expect(resolveManagerEmailDeliveryTarget("daniel.carter@northstarglobal.com")).toBe("daniel.carter@northstarglobal.com");
+  });
+
+  it.skipIf(!hasCreds)("the override never leaks into the logical manager assignment — resolveCurrentManagerAssignment (what the UI/preview shows) is completely unaffected by it", async () => {
+    process.env.HR_CONCIERGE_DEMO_MANAGER_EMAIL = "demo-safe-inbox@example.test";
+    const assignment = await resolveCurrentManagerAssignment(sarahId!);
+    expect(assignment.managerEmail).toBe("daniel.carter@northstarglobal.com");
+    expect(assignment.managerDisplayName).toBe("Daniel");
+    expect(assignment.managerEmail).not.toContain("demo-safe-inbox");
+    expect(assignment.managerDisplayName).not.toContain("demo-safe-inbox");
   });
 });

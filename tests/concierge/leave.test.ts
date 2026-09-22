@@ -59,7 +59,7 @@ describe("Leave balance — canonical view only, no second formula", () => {
 });
 
 describe("Confirmation token — bound to exact request details", () => {
-  const base = { employeeId: "emp-1", startDate: "2026-10-12", endDate: "2026-10-15", leaveType: "annual" as const, daysCount: 4 };
+  const base = { employeeId: "emp-1", startDate: "2026-10-12", endDate: "2026-10-15", leaveType: "annual" as const, daysCount: 4, managerEmail: "manager@example.test" };
 
   it("the same details always produce the same token", () => {
     expect(computeConfirmationToken(base)).toBe(computeConfirmationToken({ ...base }));
@@ -88,6 +88,11 @@ describe("Confirmation token — bound to exact request details", () => {
   it("a token does NOT verify for a different employee", () => {
     const token = computeConfirmationToken(base);
     expect(verifyConfirmationToken(token, { ...base, employeeId: "someone-else" })).toBe(false);
+  });
+
+  it("a token does NOT verify against a different manager assignment (Manager Routing fix — a manager change invalidates the preview)", () => {
+    const token = computeConfirmationToken(base);
+    expect(verifyConfirmationToken(token, { ...base, managerEmail: "someone-else@example.test" })).toBe(false);
   });
 
   it("an empty/undefined token never verifies", () => {

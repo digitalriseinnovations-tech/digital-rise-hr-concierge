@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { checkConciergeEnv, REQUIRED_CONCIERGE_ENV_VARS } from "../../src/lib/concierge/env";
+import { checkConciergeEnv, REQUIRED_CONCIERGE_ENV_VARS, OPTIONAL_CONCIERGE_ENV_VARS } from "../../src/lib/concierge/env";
 
 // This suite reports PRESENCE only. It must never assert on, print, or
 // embed an actual variable value anywhere — not in test names, not in
@@ -12,7 +12,7 @@ describe("HR Concierge environment configuration", () => {
       // eslint-disable-next-line no-console
       console.log(`${r.status.padEnd(7)} ${r.required ? "(required)" : "(optional)"}  ${r.name}`);
     }
-    expect(results.length).toBe(REQUIRED_CONCIERGE_ENV_VARS.length + 1);
+    expect(results.length).toBe(REQUIRED_CONCIERGE_ENV_VARS.length + OPTIONAL_CONCIERGE_ENV_VARS.length);
   });
 
   it.each(REQUIRED_CONCIERGE_ENV_VARS)("required variable %s is PRESENT", (name) => {

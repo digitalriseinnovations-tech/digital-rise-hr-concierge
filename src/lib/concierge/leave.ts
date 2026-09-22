@@ -216,18 +216,29 @@ interface ConfirmationDetails {
   endDate: string;
   leaveType: LeaveType;
   daysCount: number;
+  /** The manager assignment (employees.manager_email, or "" if none is
+   * currently assigned) shown to the employee AS the approver in this
+   * exact preview. Binding it into the token means the preview and the
+   * confirmed submission are cryptographically guaranteed to agree on WHO
+   * is approving — if the manager assignment changes between preview and
+   * "yes" (e.g. HR reassigns the employee to a different manager mid-
+   * conversation), the token silently fails to verify and safely falls
+   * back to a fresh preview, exactly like a changed date range or leave
+   * type already does. Never a silent submission to a different manager. */
+  managerEmail: string;
 }
 
 /** A short HMAC over the exact request details — NOT a generic "yes,
  * proceed" flag. Confirming a 4-day annual-leave request can never be
- * replayed to authorize a different date range, type, or day count,
- * because the token simply won't match different details. */
+ * replayed to authorize a different date range, type, day count, or
+ * manager assignment, because the token simply won't match different
+ * details. */
 export function computeConfirmationToken(details: ConfirmationDetails): string {
-  return computeToken([details.employeeId, details.startDate, details.endDate, details.leaveType, details.daysCount]);
+  return computeToken([details.employeeId, details.startDate, details.endDate, details.leaveType, details.daysCount, details.managerEmail]);
 }
 
 export function verifyConfirmationToken(token: string | undefined, details: ConfirmationDetails): boolean {
-  return verifyToken(token, [details.employeeId, details.startDate, details.endDate, details.leaveType, details.daysCount]);
+  return verifyToken(token, [details.employeeId, details.startDate, details.endDate, details.leaveType, details.daysCount, details.managerEmail]);
 }
 
 // ── Requests (read, scoped to one employee) ─────────────────────────────
@@ -339,6 +350,33 @@ export async function resolveManagerDisplayName(managerEmail: string): Promise<s
   const { data } = await supabase.from("employees").select("full_name").eq("email", managerEmail).maybeSingle();
   if (data?.full_name) return data.full_name.split(" ")[0];
   return managerEmail;
+}
+
+export interface ManagerAssignment {
+  /** "" (never null/undefined) so it can be bound directly into the
+   * confirmation token as a plain string — an employee with no manager
+   * assigned yet is itself a real, token-bindable state, not an absence
+   * of one. */
+  managerEmail: string;
+  managerDisplayName: string | null;
+}
+
+/**
+ * The SINGLE authoritative source for "who approves this employee's leave"
+ * — read fresh from employees.manager_email every time, never cached
+ * across a conversation and never left for the model to state on its own.
+ * Both the leave preview's "Approver: X" line and the confirmed
+ * submission's actual manager assignment must come from this one function,
+ * so they can never independently drift out of sync with each other or
+ * with reality.
+ */
+export async function resolveCurrentManagerAssignment(employeeId: string): Promise<ManagerAssignment> {
+  const supabase = createServiceClient();
+  const { data } = await supabase.from("employees").select("manager_email").eq("id", employeeId).maybeSingle();
+  const managerEmail = data?.manager_email ?? "";
+  if (!managerEmail) return { managerEmail: "", managerDisplayName: null };
+  const managerDisplayName = await resolveManagerDisplayName(managerEmail);
+  return { managerEmail, managerDisplayName };
 }
 
 /** Looks up the employee's own email on file — needed as the

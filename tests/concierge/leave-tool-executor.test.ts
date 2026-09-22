@@ -133,6 +133,7 @@ describe("create_leave_request — preview-then-confirm, never writes on the fir
       endDate: "2026-01-02",
       leaveType: "annual",
       daysCount: 2,
+      managerEmail: "irrelevant-for-this-test@example.test",
     });
     const result = await executeTool(
       "create_leave_request",

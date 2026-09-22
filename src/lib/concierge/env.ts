@@ -19,7 +19,7 @@ export const REQUIRED_CONCIERGE_ENV_VARS = [
   "HR_CONCIERGE_ESCALATION_EMAIL",
 ] as const;
 
-export const OPTIONAL_CONCIERGE_ENV_VARS = ["HR_CONCIERGE_AI_MODEL"] as const;
+export const OPTIONAL_CONCIERGE_ENV_VARS = ["HR_CONCIERGE_AI_MODEL", "HR_CONCIERGE_DEMO_MANAGER_EMAIL"] as const;
 
 export type ConciergeEnvVarName =
   | (typeof REQUIRED_CONCIERGE_ENV_VARS)[number]
