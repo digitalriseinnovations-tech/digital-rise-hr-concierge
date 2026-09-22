@@ -293,9 +293,17 @@ async function touchConversation(conversationId: string, turnIncrement: number, 
  * sampling at exactly the one moment (the actual submission) where that
  * matters most. */
 function buildFastPathReply(result: ToolExecutionResult): string {
-  const output = result.output as { status?: string; message?: string; manager_display_name?: string; program_name?: string };
+  const output = result.output as { status?: string; message?: string; manager_display_name?: string; program_name?: string; manager_notified?: boolean };
   if (result.toolName === "create_leave_request") {
     if (output.status === "submitted") {
+      // Database success and notification success are tracked separately —
+      // the request IS submitted (a real pending row exists) regardless of
+      // whether the manager email happened to send. Never let an email
+      // failure make this sound like the submission itself failed, and
+      // never suggest submitting it again.
+      if (output.manager_notified === false) {
+        return "Your leave request has been submitted and is pending approval, but the manager notification email could not be sent. The request itself is safely recorded — no need to submit it again.";
+      }
       const manager = output.manager_display_name ? ` to ${output.manager_display_name}` : "";
       return `Your leave request has been submitted${manager} and is now pending approval. I'll let you know once there's a decision.`;
     }

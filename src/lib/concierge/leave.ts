@@ -380,19 +380,35 @@ export async function submitLeaveRequest(params: {
   }
 
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const res = await fetch(`${baseUrl}/api/leave-submit`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      employee_id: params.employeeId,
-      employee_email: email,
-      leave_type: params.leaveType,
-      start_date: params.startDate,
-      end_date: params.endDate,
-      days_count: params.daysCount,
-      reason: params.reason ?? null,
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${baseUrl}/api/leave-submit`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        employee_id: params.employeeId,
+        employee_email: email,
+        leave_type: params.leaveType,
+        start_date: params.startDate,
+        end_date: params.endDate,
+        days_count: params.daysCount,
+        reason: params.reason ?? null,
+      }),
+    });
+  } catch (err) {
+    // This server-to-server call was previously unguarded — a network-level
+    // failure here (not a graceful non-2xx response, a genuine thrown
+    // exception) propagated all the way up through the deterministic
+    // confirmation fast-path uncaught, crashing the whole turn instead of
+    // producing a safe "please try again" reply. Diagnostic-only,
+    // PII-free: the error message plus whether the fallback localhost
+    // default was used (never the actual configured URL value).
+    console.error("[concierge] submitLeaveRequest fetch failed", {
+      message: err instanceof Error ? err.message : String(err),
+      usedFallbackLocalhost: !process.env.NEXT_PUBLIC_SITE_URL,
+    });
+    return { ok: false, error: "Could not reach the leave-submission service. Please try again." };
+  }
 
   const body = await res.json().catch(() => null);
   if (!res.ok || !body?.ok) {

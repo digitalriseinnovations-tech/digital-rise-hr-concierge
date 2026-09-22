@@ -354,14 +354,32 @@ async function executeCreateLeaveRequest(input: unknown, ctx: ToolExecutionConte
     };
   }
 
-  const result = await submitLeaveRequest({
-    employeeId: ctx.employeeId,
-    leaveType: args.leave_type,
-    startDate,
-    endDate,
-    daysCount,
-    reason: args.reason,
-  });
+  // Defense in depth: submitLeaveRequest() already catches its own
+  // network-level failures (leave.ts), but this call site — the one place
+  // a confirmed write can reach the database — must never let ANY
+  // unexpected throw escape unguarded either, since that would crash the
+  // whole turn instead of producing a safe "please try again" reply.
+  let result: Awaited<ReturnType<typeof submitLeaveRequest>>;
+  try {
+    result = await submitLeaveRequest({
+      employeeId: ctx.employeeId,
+      leaveType: args.leave_type,
+      startDate,
+      endDate,
+      daysCount,
+      reason: args.reason,
+    });
+  } catch (err) {
+    console.error("[concierge] create_leave_request confirmed submission threw unexpectedly", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return {
+      toolName: "create_leave_request",
+      summary: "create_leave_request(confirmed) → failed: unexpected error",
+      output: { status: "failed", message: "Could not submit the leave request. Please try again." },
+      isError: true,
+    };
+  }
 
   if (!result.ok) {
     return {
@@ -372,15 +390,23 @@ async function executeCreateLeaveRequest(input: unknown, ctx: ToolExecutionConte
     };
   }
 
+  // Database success and notification success are tracked separately —
+  // the request IS submitted (a real pending row exists) regardless of
+  // whether the manager email happened to send. Never let a message
+  // failure make this look like the submission itself failed.
+  const notificationNote = result.managerEmailed
+    ? "Submitted through the existing leave workflow — status is PENDING, awaiting manager approval. This is not an approval."
+    : "Submitted and saved as PENDING, awaiting manager approval — but the manager notification email could not be sent. The request itself is safely recorded and visible to HR; no need to submit it again.";
+
   return {
     toolName: "create_leave_request",
-    summary: `create_leave_request(confirmed) → submitted ${result.leaveRequestId}`,
+    summary: `create_leave_request(confirmed) → submitted ${result.leaveRequestId}${result.managerEmailed ? "" : " (email failed)"}`,
     output: {
       status: "submitted",
       leave_request_id: result.leaveRequestId,
       manager_notified: result.managerEmailed,
       manager_display_name: result.managerDisplayName,
-      message: "Submitted through the existing leave workflow — status is PENDING, awaiting manager approval. This is not an approval.",
+      message: notificationNote,
     },
     isError: false,
   };
