@@ -119,6 +119,7 @@ describe("enrollInTraining — the one write in this module", () => {
       seatsAvailable: null,
       nextCohortStart: null,
       mandatory: false,
+      trainingUrl: null,
     };
     const result = await enrollInTraining(jamesId!, program);
     expect(result.ok).toBe(true);
@@ -142,6 +143,7 @@ describe("enrollInTraining — the one write in this module", () => {
       seatsAvailable: 2,
       nextCohortStart: null,
       mandatory: false,
+      trainingUrl: null,
     };
     const result = await enrollInTraining(jamesId!, program);
     expect(result.ok).toBe(true);
@@ -165,6 +167,7 @@ describe("enrollInTraining — the one write in this module", () => {
       seatsAvailable: 0,
       nextCohortStart: null,
       mandatory: false,
+      trainingUrl: null,
     };
     const result = await enrollInTraining(jamesId!, program);
     expect(result.ok).toBe(true);
@@ -188,6 +191,7 @@ describe("enrollInTraining — the one write in this module", () => {
       seatsAvailable: null,
       nextCohortStart: null,
       mandatory: false,
+      trainingUrl: null,
     };
     const result = await enrollInTraining(priyaId!, program);
     expect(result.ok).toBe(true);

@@ -20,9 +20,24 @@ import { submitLeaveRequest, getMyLeaveBalance } from "../../src/lib/concierge/l
  * via the live deduct_leave_balance RPC; using a different, otherwise-
  * untouched employee avoids a real cross-file race rather than trying to
  * force serial execution.
+ *
+ * SAFETY (TAQA Demo Sprint, Phase 0): every test here calls
+ * submitLeaveRequest(), which makes a REAL fetch() to
+ * NEXT_PUBLIC_SITE_URL + /api/leave-submit — a genuine network hop, not an
+ * in-process call. If a local dev server happens to be running, that
+ * fetch is handled INSIDE THE DEV SERVER'S OWN PROCESS, which does not
+ * have process.env.VITEST/NODE_ENV=test set (Next.js sets NODE_ENV=
+ * development for `next dev` regardless of the caller) — so
+ * sendLeaveRequestToManager's test-runtime guard (src/lib/email.ts) does
+ * NOT see this as a test run and would NOT block a real SMTP send. This
+ * is the same class of risk http-routing.test.ts already gates for
+ * /api/concierge/message, applied here to /api/leave-submit. Gated behind
+ * the same explicit opt-in so default `npx vitest run` can never
+ * accidentally email a real inbox just because a dev server is up.
  */
 
 const hasCreds = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+const liveServerTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const client = hasCreds
   ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -87,7 +102,7 @@ async function decideRequest(requestId: string, decision: "approved" | "rejected
 }
 
 describe("Existing manager approval flow — unchanged by Slice 3", () => {
-  it.skipIf(!hasCreds)("an APPROVED request deducts the balance by exactly the requested days (existing deterministic logic)", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("an APPROVED request deducts the balance by exactly the requested days (existing deterministic logic)", async () => {
     // current_leave_balances only ever shows the CURRENT calendar year's
     // row (its own join is `lb.year = extract(year from current_date)`),
     // matching exactly what the real approval route does (it deducts into
@@ -115,7 +130,7 @@ describe("Existing manager approval flow — unchanged by Slice 3", () => {
     expect(after?.takenDays).toBe((before?.takenDays ?? 0) + 2);
   });
 
-  it.skipIf(!hasCreds)("a REJECTED request does NOT deduct the balance", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("a REJECTED request does NOT deduct the balance", async () => {
     const before = await getMyLeaveBalance(fatimaId!, "annual");
 
     const submitted = await submitLeaveRequest({
@@ -139,7 +154,7 @@ describe("Existing manager approval flow — unchanged by Slice 3", () => {
     expect(row?.status).toBe("rejected");
   });
 
-  it.skipIf(!hasCreds)("a request already decided cannot be decided again (race-safe guard, unchanged)", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("a request already decided cannot be decided again (race-safe guard, unchanged)", async () => {
     // Uses "rejected" as the first decision (not "approved") specifically
     // so this test never invokes deduct_leave_balance — keeping it fully
     // independent of the balance-mutation concerns the first test above

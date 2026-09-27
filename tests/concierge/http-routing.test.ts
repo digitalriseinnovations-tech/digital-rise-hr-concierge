@@ -99,7 +99,7 @@ describe("Concierge HTTP routes are actually reachable (not middleware-blocked)"
   // would have been reachable with NO authentication at all. Fixed by
   // requiring an exact match or a "/"-segment boundary. This test exists
   // specifically so that regression can never silently return.
-  for (const staffRoute of ["/concierge-insights", "/employee-requests", "/hr-learning", "/hr-knowledge"]) {
+  for (const staffRoute of ["/concierge-insights", "/employee-requests", "/hr-learning", "/hr-knowledge", "/training-analytics"]) {
     it(`${staffRoute} (staff-only admin route) IS redirected to /login without a staff session — never publicly reachable`, async () => {
       if (!(await serverIsUp())) return;
       const res = await fetch(`${baseUrl}${staffRoute}`, { method: "GET", redirect: "manual" });

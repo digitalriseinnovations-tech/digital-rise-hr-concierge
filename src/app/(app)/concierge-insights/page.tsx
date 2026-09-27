@@ -35,6 +35,7 @@ export default async function ConciergeInsightsPage() {
         />
         <StatCard label="Mentorship requests" value={insights.mentorshipRequests} />
         <StatCard label="Coaching requests" value={insights.coachingRequests} />
+        <StatCard label="Requests needing HR" value={insights.openHrRequestsCount} sub="Open escalation / mentorship / coaching / general requests" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">

@@ -14,6 +14,9 @@ const PUBLIC_PREFIXES = [
   // chat, entirely separate from Supabase Auth/finance_users staff login.
   "/concierge",
   "/api/concierge",
+  // Microsoft Copilot integration boundary — its own API-key + employee
+  // two-factor auth (src/lib/concierge/copilot-auth.ts), not Supabase Auth.
+  "/api/integrations/copilot",
 ];
 
 // Exact match, or match followed by a path separator, ONLY — never a bare

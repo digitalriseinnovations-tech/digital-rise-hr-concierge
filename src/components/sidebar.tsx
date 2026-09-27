@@ -33,6 +33,7 @@ const NAV: NavItem[] = [
   { label: "Concierge Insights", href: "/concierge-insights", icon: "◆", roles: ["admin", "hr"] },
   { label: "HR Knowledge",       href: "/hr-knowledge",       icon: "❋", roles: ["admin", "hr"] },
   { label: "HR Learning",        href: "/hr-learning",        icon: "◈", roles: ["admin", "hr"] },
+  { label: "Training Analytics", href: "/training-analytics", icon: "▤", roles: ["admin", "hr"] },
   { label: "Employee Requests",  href: "/employee-requests",  icon: "✉", roles: ["admin", "hr"] },
   { label: "Leave",              href: "/leave",              icon: "◐", roles: ["admin", "hr", "finance"] },
   { label: "Employees",          href: "/employees",          icon: "◉", roles: ["admin", "finance", "hr", "viewer"] },

@@ -62,6 +62,11 @@ export interface ConciergeInsights {
   activeKnowledgeEntries: number;
   totalKnowledgeEntries: number;
   activeTrainingPrograms: number;
+  /** hr_requests (any type: escalation/mentorship/coaching/general) still
+   * awaiting a human — "requests requiring HR intervention", distinct
+   * from resolvedSelfServiceInteractions below. A real count query, not
+   * derived from the message-parsing loop. */
+  openHrRequestsCount: number;
   estimate: {
     resolvedSelfServiceInteractions: number;
     minutesPerQueryAssumption: number;
@@ -78,13 +83,14 @@ function parseToolCalls(row: { tool_calls: unknown }): StoredToolCall[] {
 export async function computeConciergeInsights(): Promise<ConciergeInsights> {
   const supabase = createServiceClient();
 
-  const [{ data: conversations }, { data: messages }, { count: activeKnowledgeCount }, { count: totalKnowledgeCount }, { count: activeProgramCount }] =
+  const [{ data: conversations }, { data: messages }, { count: activeKnowledgeCount }, { count: totalKnowledgeCount }, { count: activeProgramCount }, { count: openHrRequestsCount }] =
     await Promise.all([
       supabase.from("concierge_conversations").select("id, status"),
       supabase.from("concierge_messages").select("conversation_id, role, content, tool_calls, created_at").order("created_at", { ascending: true }),
       supabase.from("hr_knowledge_base").select("id", { count: "exact", head: true }).eq("active", true),
       supabase.from("hr_knowledge_base").select("id", { count: "exact", head: true }),
       supabase.from("training_programs").select("id", { count: "exact", head: true }).eq("active", true),
+      supabase.from("hr_requests").select("id", { count: "exact", head: true }).in("status", ["open", "in_progress"]),
     ]);
 
   const escalatedConversationIds = new Set((conversations ?? []).filter((c) => c.status === "escalated").map((c) => c.id));
@@ -129,7 +135,13 @@ export async function computeConciergeInsights(): Promise<ConciergeInsights> {
       if (call.toolName === "create_coaching_request" && !call.isError && output?.status === "submitted") {
         coachingRequests++;
       }
-      if (call.toolName === "escalate_to_hr" && !call.isError) {
+      // escalate_to_hr is preview -> confirm gated (Showcase Hardening) —
+      // a PREVIEW call also has isError: false, so only status "submitted"
+      // or "already_open" (a genuine completion) counts here, matching
+      // the same completion-status semantics orchestrator.ts's own
+      // COMPLETION_STATUSES uses. Counting previews would inflate this
+      // number with escalations that were never actually confirmed.
+      if (call.toolName === "escalate_to_hr" && !call.isError && (output?.status === "submitted" || output?.status === "already_open")) {
         hrEscalations++;
       }
       if (KNOWLEDGE_LOOKUP_TOOLS.has(call.toolName) && !call.isError) {
@@ -170,6 +182,7 @@ export async function computeConciergeInsights(): Promise<ConciergeInsights> {
     activeKnowledgeEntries: activeKnowledgeCount ?? 0,
     totalKnowledgeEntries: totalKnowledgeCount ?? 0,
     activeTrainingPrograms: activeProgramCount ?? 0,
+    openHrRequestsCount: openHrRequestsCount ?? 0,
     estimate: {
       resolvedSelfServiceInteractions,
       minutesPerQueryAssumption: ESTIMATED_MINUTES_PER_SELF_SERVICE_QUERY,
@@ -234,7 +247,9 @@ export async function computeKnowledgeGaps(): Promise<KnowledgeGapEntry[]> {
         }
       }
 
-      if (call.toolName === "escalate_to_hr" && !call.isError) {
+      // Same fix as computeConciergeInsights above — only a genuinely
+      // confirmed escalation (never a preview) belongs in this view.
+      if (call.toolName === "escalate_to_hr" && !call.isError && (output?.status === "submitted" || output?.status === "already_open")) {
         const query = lastEmployeeMessageByConversation.get(row.conversation_id);
         if (query) {
           gaps.push({ query: query.slice(0, MAX_GAP_QUERY_LENGTH), status: "escalated", occurredAt: row.created_at });

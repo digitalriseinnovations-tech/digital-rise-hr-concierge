@@ -5,6 +5,15 @@ import { CONCIERGE_TOOL_NAMES } from "../../src/lib/concierge/tools";
 import { computeConfirmationToken } from "../../src/lib/concierge/leave";
 
 const hasCreds = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+// SAFETY (TAQA Demo Sprint, Phase 0): a CONFIRMED create_leave_request
+// call reaches submitLeaveRequest(), which makes a REAL fetch() to
+// NEXT_PUBLIC_SITE_URL + /api/leave-submit — handled by a separately
+// running dev server process if one is up, which does not have
+// process.env.VITEST/NODE_ENV=test set, so the email test-runtime guard
+// would not block a real SMTP send there. Only the two tests below that
+// actually complete a confirmed submission are gated on this; the
+// preview/invalid-token tests never reach submitLeaveRequest at all.
+const liveServerTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const client = hasCreds
   ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -143,7 +152,7 @@ describe("create_leave_request — preview-then-confirm, never writes on the fir
     expect((result.output as any).status).toBe("preview"); // not submitted
   });
 
-  it.skipIf(!hasCreds)("confirmed=true WITH the correct token creates a real request through /api/leave-submit", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("confirmed=true WITH the correct token creates a real request through /api/leave-submit", async () => {
     const preview = await executeTool(
       "create_leave_request",
       { start_date: "2026-11-03", end_date: "2026-11-04", leave_type: "annual", confirmed: false },
@@ -167,7 +176,7 @@ describe("create_leave_request — preview-then-confirm, never writes on the fir
     expect(row?.days_count).toBe(2);
   });
 
-  it.skipIf(!hasCreds)("retrying the same confirmed call does not create a duplicate request (idempotency)", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("retrying the same confirmed call does not create a duplicate request (idempotency)", async () => {
     const preview = await executeTool(
       "create_leave_request",
       { start_date: "2026-12-01", end_date: "2026-12-02", leave_type: "annual", confirmed: false },
@@ -212,7 +221,10 @@ describe("get_my_leave_requests / get_leave_request_status — identity boundary
     }
   });
 
-  it.skipIf(!hasCreds)("a submitted request shows status pending via get_leave_request_status", async () => {
+  // Depends on the (gated, see the file-level SAFETY comment above) real
+  // submission created earlier in this file for these exact dates — with
+  // that test skipped by default, this read has nothing to find either.
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("a submitted request shows status pending via get_leave_request_status", async () => {
     const result = await executeTool(
       "get_leave_request_status",
       { start_date: "2026-11-03", end_date: "2026-11-04" },

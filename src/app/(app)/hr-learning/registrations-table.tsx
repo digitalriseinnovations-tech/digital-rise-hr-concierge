@@ -3,7 +3,7 @@
 import { updateTrainingRegistrationStatus } from "./actions";
 import { StatusSelect } from "./status-select";
 
-const REGISTRATION_STATUSES = ["requested", "confirmed", "waitlisted", "declined", "cancelled", "completed"] as const;
+const REGISTRATION_STATUSES = ["assigned", "requested", "confirmed", "in_progress", "waitlisted", "declined", "cancelled", "completed"] as const;
 
 export interface RegistrationRow {
   id: string;

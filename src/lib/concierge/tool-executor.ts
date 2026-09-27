@@ -24,6 +24,7 @@ import {
   computeEnrollmentToken,
   verifyEnrollmentToken,
   enrollInTraining,
+  startTrainingProgress,
 } from "./training";
 import {
   createMentorshipRequest,
@@ -575,6 +576,37 @@ async function executeRequestTrainingEnrollment(input: unknown, ctx: ToolExecuti
   };
 }
 
+// Deliberately ONE call, no preview/confirm — starting/continuing a
+// program you're already assigned or enrolled in is harmless navigation
+// (opening a link, marking progress), never a consequential write like a
+// leave submission or an enrollment request.
+async function executeStartTrainingProgram(input: unknown, ctx: ToolExecutionContext): Promise<ToolExecutionResult> {
+  const args = input as { program_name?: string };
+  if (!args.program_name) {
+    return {
+      toolName: "start_training_program",
+      summary: "start_training_program → rejected, missing program_name",
+      output: { ok: false, message: "Missing program_name." },
+      isError: true,
+    };
+  }
+
+  const result = await startTrainingProgress(ctx.employeeId, args.program_name);
+  return {
+    toolName: "start_training_program",
+    summary: `start_training_program("${args.program_name}") → ${result.status ?? (result.found ? "not startable" : "not found")}`,
+    output: {
+      ok: result.ok,
+      found: result.found,
+      status: result.status,
+      training_url: result.trainingUrl,
+      program_name: result.programName,
+      message: result.message,
+    },
+    isError: !result.ok,
+  };
+}
+
 // ── Slice 4 — mentorship / coaching write executors ─────────────────────
 // Both reuse the existing hr_requests table (same one escalate_to_hr
 // writes to). No automated matching, no AI-granted approval/eligibility —
@@ -777,6 +809,8 @@ export async function executeTool(
       return executeGetMyTraining(input, ctx);
     case "request_training_enrollment":
       return executeRequestTrainingEnrollment(input, ctx);
+    case "start_training_program":
+      return executeStartTrainingProgram(input, ctx);
     case "create_mentorship_request":
       return executeCreateMentorshipRequest(input, ctx);
     case "create_coaching_request":

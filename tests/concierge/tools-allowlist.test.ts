@@ -26,6 +26,7 @@ const EXPECTED_TOOL_NAMES = [
   "get_training_program",
   "get_my_training",
   "request_training_enrollment",
+  "start_training_program",
   "create_mentorship_request",
   "create_coaching_request",
   "get_my_hr_requests",

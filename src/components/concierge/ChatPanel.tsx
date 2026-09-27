@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { ConciergeMarkdown } from "./conciergeMarkdown";
 
 interface ChatMessage {
   role: "employee" | "assistant";
@@ -152,7 +153,11 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
         isEmployee ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-800"
       }`}>
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        {isEmployee ? (
+          <div className="whitespace-pre-wrap">{message.content}</div>
+        ) : (
+          <ConciergeMarkdown content={message.content} />
+        )}
         {!isEmployee && message.usedKnowledge && (
           <div className="mt-1.5 text-[11px] font-medium text-indigo-600">✓ Grounded in Northstar Global HR knowledge</div>
         )}

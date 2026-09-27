@@ -27,6 +27,17 @@ import { resolveManagerEmailDeliveryTarget } from "../../src/lib/email";
  */
 
 const hasCreds = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+// SAFETY (TAQA Demo Sprint, Phase 0): a genuinely COMPLETED confirmed
+// create_leave_request reaches submitLeaveRequest(), which makes a REAL
+// fetch() to NEXT_PUBLIC_SITE_URL + /api/leave-submit — handled by a
+// separately running dev server process if one is up, which does not
+// have process.env.VITEST/NODE_ENV=test set, so the email test-runtime
+// guard would not block a real SMTP send there. Only the two tests that
+// actually complete a submission for a REAL employee (Sarah) are gated on
+// this — the "nonexistent employee" failure test never reaches
+// submitLeaveRequest's fetch at all (getEmployeeEmail returns null
+// first), and every other test here is a pure-function/DB-read test.
+const liveServerTestsEnabled = process.env.CONCIERGE_ALLOW_LIVE_MODEL_TESTS === "1";
 const client = hasCreds
   ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL as string, process.env.SUPABASE_SERVICE_ROLE_KEY as string, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -61,7 +72,7 @@ afterAll(async () => {
 });
 
 describe("Leave confirmation — real fast-path integration (Anthropic-safe by construction)", () => {
-  it.skipIf(!hasCreds)(
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)(
     "preview creates no leave request, then 'yes' executes deterministically (no Anthropic call) and returns a clear submitted/pending response",
     async () => {
       const conversationId = await startConversation(sarahId!);
@@ -239,7 +250,7 @@ describe("Manager Routing — approver display is deterministic, never LLM-gener
     expect(first.managerDisplayName).toBe("Daniel");
   });
 
-  it.skipIf(!hasCreds)("preview's manager_display_name and the confirmed submission's manager come from the same resolution — never independently drift", async () => {
+  it.skipIf(!hasCreds || !liveServerTestsEnabled)("preview's manager_display_name and the confirmed submission's manager come from the same resolution — never independently drift", async () => {
     const conversationId = await startConversation(sarahId!);
     createdConversationIds.push(conversationId);
     const ctx = { employeeId: sarahId!, employeeFullName: "Sarah Ahmed", conversationId };

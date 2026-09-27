@@ -257,7 +257,13 @@ const getMyTrainingTool: ConciergeToolDefinition = {
   permissionClass: "READ-ONLY EMPLOYEE",
   anthropicSchema: {
     name: "get_my_training",
-    description: "List the CURRENT employee's own training registrations/requests and their status. Use for 'My Learning' style questions.",
+    description:
+      "List the CURRENT employee's own training registrations/assignments and their status (assigned, requested, " +
+      "confirmed, in_progress, waitlisted, declined, cancelled, completed), including due_date, overdue (derived: " +
+      "due_date has passed and it isn't completed), started_at, completed_at, and whether each is mandatory. Use for " +
+      "'My Learning' questions, 'what mandatory training do I still need to complete', 'do I have overdue training', " +
+      "and 'what am I enrolled in'. Always call this before answering any question about the employee's own training " +
+      "status — never guess or recall from earlier in the conversation, since status can change.",
     input_schema: { type: "object", properties: {} },
   },
 };
@@ -282,6 +288,28 @@ const requestTrainingEnrollmentTool: ConciergeToolDefinition = {
         confirmation_token: { type: "string", description: "Required when confirmed=true — from the step-1 preview." },
       },
       required: ["program_name", "confirmed"],
+    },
+  },
+};
+
+const startTrainingProgramTool: ConciergeToolDefinition = {
+  name: "start_training_program",
+  permissionClass: "EMPLOYEE WRITE",
+  anthropicSchema: {
+    name: "start_training_program",
+    description:
+      "Start (or continue/resume) a training program the CURRENT employee is already assigned or enrolled in, and " +
+      "return its training link if one is configured. ONE call, NO confirmation needed — opening a course link and " +
+      "marking progress as started is harmless navigation, not a consequential action like submitting leave or an " +
+      "enrollment request. Safe to call again for an already-started or already-completed program — it will not " +
+      "regress status, it just returns the link again. If the employee is not enrolled/assigned, or the registration " +
+      "is still pending approval or waitlisted, this tells you so instead of starting anything.",
+    input_schema: {
+      type: "object",
+      properties: {
+        program_name: { type: "string", description: "The exact program name, or a close match, as the employee said it." },
+      },
+      required: ["program_name"],
     },
   },
 };
@@ -369,6 +397,7 @@ export const CONCIERGE_TOOLS: ConciergeToolDefinition[] = [
   getTrainingProgramTool,
   getMyTrainingTool,
   requestTrainingEnrollmentTool,
+  startTrainingProgramTool,
   createMentorshipRequestTool,
   createCoachingRequestTool,
   getMyHrRequestsTool,
