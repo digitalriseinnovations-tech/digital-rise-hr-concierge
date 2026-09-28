@@ -1,5 +1,6 @@
 import { requireUser, can } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { lookupActiveOrganization, employeeBelongsToActiveOrganization } from "@/lib/concierge/organizations";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -35,6 +36,17 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
   ]);
 
   if (empError || !employee) {
+    notFound();
+  }
+
+  // Organization isolation (migration_011): once organization scoping is
+  // applied, an employee belonging to a DIFFERENT organization than the
+  // one currently active for this deployment must be treated exactly like
+  // a nonexistent employee — never revealed by ID, regardless of role.
+  // Falls back to no-op pre-migration, same as every other org-scoping
+  // check in this codebase (see src/lib/concierge/organizations.ts).
+  const orgLookup = await lookupActiveOrganization();
+  if (!employeeBelongsToActiveOrganization(employee.organization_id, orgLookup)) {
     notFound();
   }
 

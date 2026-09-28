@@ -34,6 +34,22 @@ function activeOrganizationSlug(): string {
   return process.env.HR_CONCIERGE_ACTIVE_ORGANIZATION_SLUG?.trim() || DEFAULT_ACTIVE_SLUG;
 }
 
+/**
+ * The single org-isolation decision used everywhere an employee record is
+ * read or written by ID (employee profile, employee edit, the edit API
+ * route): true only if the employee genuinely belongs to the currently
+ * active organization. Pre-migration (not supported yet), every employee
+ * is treated as accessible — identical to today's behavior. Once
+ * migration_011 is applied, a real cross-organization employee ID must
+ * resolve to false here, the same as a nonexistent one — callers should
+ * respond with a plain 404/notFound(), never a distinguishable error.
+ */
+export function employeeBelongsToActiveOrganization(employeeOrganizationId: string | null | undefined, lookup: ActiveOrganizationLookup): boolean {
+  if (!lookup.supported) return true;
+  if (!lookup.organization) return false;
+  return employeeOrganizationId === lookup.organization.id;
+}
+
 export async function lookupActiveOrganization(): Promise<ActiveOrganizationLookup> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
