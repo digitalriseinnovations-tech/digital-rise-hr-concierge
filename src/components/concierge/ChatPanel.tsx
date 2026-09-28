@@ -159,7 +159,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           <ConciergeMarkdown content={message.content} />
         )}
         {!isEmployee && message.usedKnowledge && (
-          <div className="mt-1.5 text-[11px] font-medium text-indigo-600">✓ Grounded in Northstar Global HR knowledge</div>
+          <div className="mt-1.5 text-[11px] font-medium text-indigo-600">✓ Grounded in verified HR knowledge</div>
         )}
         {!isEmployee && message.escalated && (
           <div className="mt-1.5 text-[11px] font-medium text-amber-600">→ HR has been notified and will follow up</div>

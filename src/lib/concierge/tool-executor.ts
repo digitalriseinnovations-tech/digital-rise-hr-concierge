@@ -1,6 +1,7 @@
 import "server-only";
 import { searchHrKnowledge, type HrKnowledgeCategory } from "./knowledge";
 import { CONCIERGE_TOOL_NAMES } from "./tools";
+import { getOrgDisplayName } from "./org";
 import { sendHrEscalationNotification } from "@/lib/email";
 import {
   LEAVE_TYPES,
@@ -69,7 +70,7 @@ function knowledgeResultOutput(result: Awaited<ReturnType<typeof searchHrKnowled
   if (!result.found) {
     return {
       found: false,
-      message: "No matching entries in the Northstar Global HR knowledge base.",
+      message: `No matching entries in the ${getOrgDisplayName()} HR knowledge base.`,
     };
   }
   return {

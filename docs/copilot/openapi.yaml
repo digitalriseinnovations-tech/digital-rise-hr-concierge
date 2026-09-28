@@ -1,0 +1,226 @@
+openapi: 3.0.3
+info:
+  title: Digital Rise HR Concierge — Copilot Integration API
+  description: >
+    Read-only (and one conversational) REST surface for connecting Microsoft
+    Copilot Studio custom connectors/actions to the Digital Rise HR
+    Concierge. Every operation here is a thin adapter over the same
+    deterministic HR service functions the employee-facing chat UI already
+    uses — no HR business logic is duplicated for this integration. For an
+    MCP-native alternative covering the same read-only capabilities, see
+    /api/mcp (Streamable HTTP transport).
+  version: "1.0.0"
+servers:
+  - url: https://{deployment-host}
+    description: Set to this deployment's actual Vercel production URL.
+    variables:
+      deployment-host:
+        default: your-deployment.vercel.app
+security:
+  - CopilotApiKey: []
+paths:
+  /api/integrations/copilot/employee-context:
+    get:
+      operationId: getEmployeeProfile
+      summary: Resolve an employee's first/full name.
+      description: Two-factor identity check (employee_code + email) — the same lookup /api/concierge/identify uses. No session is issued; every call re-verifies identity.
+      parameters:
+        - $ref: '#/components/parameters/EmployeeCode'
+        - $ref: '#/components/parameters/Email'
+      responses:
+        '200':
+          description: Employee resolved.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  firstName: { type: string }
+                  fullName: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/integrations/copilot/leave-balance:
+    get:
+      operationId: getLeaveBalance
+      summary: Get the employee's own leave balance for one leave type.
+      description: Reuses getMyLeaveBalance() — the same read the Concierge chat's get_my_leave_balance tool uses.
+      parameters:
+        - $ref: '#/components/parameters/EmployeeCode'
+        - $ref: '#/components/parameters/Email'
+        - name: leave_type
+          in: query
+          required: false
+          description: Defaults to "annual" if omitted.
+          schema: { type: string }
+      responses:
+        '200':
+          description: Leave balance (or found:false if none exists for that type).
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  found: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/integrations/copilot/leave-requests:
+    get:
+      operationId: getLeaveRequests
+      summary: List the employee's own recent leave requests with their status.
+      description: Reuses getMyLeaveRequests() — the same read the Concierge chat's get_my_leave_requests tool uses.
+      parameters:
+        - $ref: '#/components/parameters/EmployeeCode'
+        - $ref: '#/components/parameters/Email'
+        - name: limit
+          in: query
+          required: false
+          description: Max requests to return, default 5, max 20.
+          schema: { type: integer }
+      responses:
+        '200':
+          description: The employee's recent leave requests.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items: { type: object }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/integrations/copilot/my-training:
+    get:
+      operationId: getMyTraining
+      summary: List the employee's own training registrations/assignments and their status.
+      description: Reuses getMyTraining() — the same read the Concierge chat's get_my_training tool uses. Includes due_date and a derived overdue flag per entry.
+      parameters:
+        - $ref: '#/components/parameters/EmployeeCode'
+        - $ref: '#/components/parameters/Email'
+      responses:
+        '200':
+          description: The employee's training registrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  registrations:
+                    type: array
+                    items: { type: object }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/integrations/copilot/hr-policy:
+    get:
+      operationId: getHrPolicy
+      summary: Search the organization's configured HR knowledge base.
+      description: Reuses searchHrKnowledge() — the same read the Concierge chat's search_hr_knowledge tool uses. Organization-wide content, not employee-specific, but still requires the same two-factor identity check.
+      parameters:
+        - $ref: '#/components/parameters/EmployeeCode'
+        - $ref: '#/components/parameters/Email'
+        - name: query
+          in: query
+          required: false
+          description: Free-text question.
+          schema: { type: string }
+        - name: category
+          in: query
+          required: false
+          description: Optional category filter (leave, benefits, onboarding, policies, learning, mentorship, coaching, wellbeing, general).
+          schema: { type: string }
+      responses:
+        '200':
+          description: Matching HR knowledge base entries.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  found: { type: boolean }
+                  entries:
+                    type: array
+                    items: { type: object }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/integrations/copilot/message:
+    post:
+      operationId: sendConciergeMessage
+      summary: Send a message to the HR Concierge and get its reply.
+      description: >
+        Routes through the same runConciergeTurn() the employee chat UI
+        uses — every existing safety property (confirmation-before-write,
+        the Anthropic/email test-runtime guards, idempotency) applies
+        automatically. This is the only non-read-only-adjacent operation
+        exposed here: it can, within the conversation, reach the same
+        preview/confirm flows the chat UI exposes (leave, training,
+        mentorship, coaching, escalation) — it does not skip or bypass
+        that confirmation architecture.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employee_code, email, message]
+              properties:
+                employee_code: { type: string }
+                email: { type: string }
+                message: { type: string, maxLength: 2000 }
+                conversationId:
+                  type: string
+                  description: Omit on the first message of a new conversation.
+      responses:
+        '200':
+          description: The Concierge's reply.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversationId: { type: string }
+                  reply: { type: string }
+                  usedKnowledge: { type: boolean }
+                  escalated: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate-limited — too many messages from this employee in a short window.
+
+components:
+  securitySchemes:
+    CopilotApiKey:
+      type: apiKey
+      in: header
+      name: X-Copilot-Api-Key
+      description: >
+        Shared secret matched against the COPILOT_INTEGRATION_API_KEY
+        environment variable. Demo-grade auth — see
+        docs/MICROSOFT_COPILOT_INTEGRATION.md for the production Microsoft
+        Entra ID / On-Behalf-Of design this is meant to be replaced by.
+  parameters:
+    EmployeeCode:
+      name: employee_code
+      in: query
+      required: true
+      description: The employee's employee code, e.g. NSG-1001.
+      schema: { type: string }
+    Email:
+      name: email
+      in: query
+      required: true
+      description: The employee's work email — matched two-factor against employee_code.
+      schema: { type: string }
+  responses:
+    Unauthorized:
+      description: Missing/invalid API key, or the employee_code + email did not match a single active employee.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }

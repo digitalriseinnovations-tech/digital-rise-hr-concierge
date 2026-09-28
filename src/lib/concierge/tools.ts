@@ -1,6 +1,12 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { HR_KNOWLEDGE_CATEGORIES } from "./knowledge";
 import { LEAVE_TYPES } from "./leave";
+import { getOrgDisplayName } from "./org";
+
+// Read once per deployment, same reasoning as product-mode.ts's
+// getProductMode() — this is deployment-wide tenant identity, not
+// per-request data, so there is no benefit to re-reading it per tool call.
+const ORG_NAME = getOrgDisplayName();
 
 /**
  * Slice 2 tool set — knowledge-oriented only, per the sprint brief. No
@@ -30,7 +36,7 @@ const searchHrKnowledgeTool: ConciergeToolDefinition = {
   anthropicSchema: {
     name: "search_hr_knowledge",
     description:
-      "Search Northstar Global's configured HR knowledge base for policy, benefits, and general HR information. " +
+      `Search ${ORG_NAME}'s configured HR knowledge base for policy, benefits, and general HR information. ` +
       "You MUST call this (or one of the category-scoped tools) before answering ANY question about company policy, " +
       "benefits, working hours, or similar factual HR topics — never answer from general knowledge. If this returns " +
       "no results, say the information could not be confirmed from company HR knowledge and offer to escalate to HR.",
@@ -55,7 +61,7 @@ const getOnboardingInformationTool: ConciergeToolDefinition = {
   anthropicSchema: {
     name: "get_onboarding_information",
     description:
-      "Get Northstar Global's configured onboarding guidance (first week, IT access, benefits enrollment, etc). " +
+      `Get ${ORG_NAME}'s configured onboarding guidance (first week, IT access, benefits enrollment, etc). ` +
       "Call this for any onboarding/new-hire question instead of guessing.",
     input_schema: {
       type: "object",
@@ -71,7 +77,7 @@ const getMentorshipInformationTool: ConciergeToolDefinition = {
   permissionClass: "READ-ONLY EMPLOYEE",
   anthropicSchema: {
     name: "get_mentorship_information",
-    description: "Get Northstar Global's configured mentorship program information and eligibility.",
+    description: `Get ${ORG_NAME}'s configured mentorship program information and eligibility.`,
     input_schema: { type: "object", properties: {} },
   },
 };
@@ -81,7 +87,7 @@ const getCoachingInformationTool: ConciergeToolDefinition = {
   permissionClass: "READ-ONLY EMPLOYEE",
   anthropicSchema: {
     name: "get_coaching_information",
-    description: "Get Northstar Global's configured executive coaching program information and eligibility.",
+    description: `Get ${ORG_NAME}'s configured executive coaching program information and eligibility.`,
     input_schema: { type: "object", properties: {} },
   },
 };
@@ -232,7 +238,7 @@ const listTrainingProgramsTool: ConciergeToolDefinition = {
   anthropicSchema: {
     name: "list_training_programs",
     description:
-      "List Northstar Global's active/configured training and learning programs. Call this for any 'what training is " +
+      `List ${ORG_NAME}'s active/configured training and learning programs. Call this for any 'what training is ` +
       "available' or 'what leadership programs can I join' style question — never list programs from memory.",
     input_schema: { type: "object", properties: {} },
   },

@@ -4,6 +4,7 @@ Practical, step-by-step. No secrets included — where a real credential is need
 
 ## Before you start
 
+- **Org identity**: this deployment now presents itself as **Digital Rise Innovations** (via `HR_CONCIERGE_ORG_DISPLAY_NAME=Digital Rise Innovations`, set in Vercel) — the Concierge system prompt, tool descriptions, and the identify screen no longer say "Northstar Global." The underlying seeded employee/knowledge-base rows are still the original Northstar Global demo data (see §"Remaining Northstar references" in the conversion report) — the identify-screen placeholder domain below is illustrative, not literal.
 - **Manager_email safety**: seeded employees' managers use `@northstarglobal.com` addresses, which is a real, externally-registered domain. If `HR_CONCIERGE_DEMO_MANAGER_EMAIL` is **not** set in Vercel, a real confirmed leave request in the demo will email that real domain. **Set `HR_CONCIERGE_DEMO_MANAGER_EMAIL` in Vercel before the demo** if you plan to run step 4/5 for real (see the final report for the exact value to use).
 - **Run the two pending SQL files first** (Supabase SQL Editor, in order): `supabase/migration_009_training_tracking.sql`, then `supabase/seed_taqa_demo_expansion.sql`. Steps 7–8 and 14 depend on this data existing.
 - **HR login**: confirmed working — you already have a Supabase Auth account linked to an active `hr`-role `finance_users` row. Use that account for steps 11–15; no further setup needed.

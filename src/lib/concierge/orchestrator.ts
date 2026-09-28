@@ -5,6 +5,7 @@ import { getAnthropicClient, CONCIERGE_AI_MODEL } from "./anthropic-client";
 import { CONCIERGE_ANTHROPIC_TOOLS } from "./tools";
 import { executeTool, type ToolExecutionResult } from "./tool-executor";
 import { buildConciergeSystemPrompt } from "./prompt";
+import { getOrgDisplayName } from "./org";
 
 /**
  * The reasoning loop: Employee Request → HR Concierge Reasoning →
@@ -637,7 +638,7 @@ export async function runConciergeTurn(params: {
   }
 
   if (!finalText) {
-    finalText = "I couldn't confirm that from Northstar Global's HR knowledge. Would you like me to connect you with HR?";
+    finalText = `I couldn't confirm that from ${getOrgDisplayName()}'s HR knowledge. Would you like me to connect you with HR?`;
   }
 
   finalText = reconcileReplyWithRealOutcome(finalText, structuredToolCalls);

@@ -17,6 +17,9 @@ const PUBLIC_PREFIXES = [
   // Microsoft Copilot integration boundary — its own API-key + employee
   // two-factor auth (src/lib/concierge/copilot-auth.ts), not Supabase Auth.
   "/api/integrations/copilot",
+  // MCP adapter over the same Copilot integration boundary — same API-key
+  // + employee two-factor auth, enforced inside the route itself.
+  "/api/mcp",
 ];
 
 // Exact match, or match followed by a path separator, ONLY — never a bare

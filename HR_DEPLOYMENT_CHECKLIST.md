@@ -25,6 +25,13 @@ absence only.
       `supabase/seed_hr_concierge_demo.sql` (12 fictional Northstar Global
       employees, 20 HR knowledge entries, 4 training programs). Skip for a
       real customer deployment — seed their own data instead.
+      **Note:** the app's own displayed org identity (system prompt, tool
+      descriptions, identify screen) is now decoupled from this seed's
+      literal text via `HR_CONCIERGE_ORG_DISPLAY_NAME` (see §2) — but the
+      seeded `hr_knowledge_base.answer` text and employee email domain
+      still say "Northstar Global" / `@northstarglobal.com` until
+      `supabase/migration_010_digital_rise_org_identity.sql` is manually
+      reviewed and applied.
 - [ ] At least one row in `finance_users` with `role = 'hr'` (or `'admin'`)
       and `active = true`, for the HR admin screens' staff login. (Table
       name is legacy-only — see the audit's Type C note; it is the
@@ -51,6 +58,9 @@ updated to include every one of them with guidance.
 | `HR_CONCIERGE_ESCALATION_EMAIL` | Yes | Inbox that receives "escalate to HR" notifications |
 | `HR_CONCIERGE_AI_MODEL` | No | Defaults to `claude-haiku-4-5-20251001` if unset |
 | `APP_PRODUCT_MODE` | **Yes, for HR** | Set to `hr` — see §5a. Defaults to Finance branding if unset. |
+| `HR_CONCIERGE_ORG_DISPLAY_NAME` | No | The current tenant's display name (system prompt, tool descriptions, identify screen). Defaults to generic "your organization" if unset — set to e.g. `Digital Rise Innovations`. |
+| `HR_CONCIERGE_DEMO_MANAGER_EMAIL` | No | Demo-only: redirects manager-notification email DELIVERY to a safe inbox without changing stored data. Leave unset in a real customer deployment. |
+| `COPILOT_INTEGRATION_API_KEY` | No | Shared API key gating `/api/integrations/copilot/*` and `/api/mcp` — see `docs/MICROSOFT_COPILOT_INTEGRATION.md`. Endpoints fail closed (401) if unset. |
 
 Verify at runtime with the existing check: `checkConciergeEnv()` /
 `assertConciergeEnv()` in `src/lib/concierge/env.ts` — already exercised

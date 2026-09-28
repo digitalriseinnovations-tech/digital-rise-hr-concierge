@@ -1,4 +1,5 @@
 import { IdentifyForm } from "./form";
+import { getOrgDisplayName } from "@/lib/concierge/org";
 
 export const metadata = {
   title: "HR Concierge — Digital Rise",
@@ -10,16 +11,17 @@ export const metadata = {
 };
 
 export default function IdentifyPage() {
+  const orgName = getOrgDisplayName();
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">Digital Rise</div>
           <h1 className="mt-1 text-2xl font-extrabold text-slate-900">HR Concierge</h1>
-          <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">AI Employee for Northstar Global</p>
+          <p className="mt-0.5 text-xs font-medium uppercase tracking-wide text-slate-400">AI Employee for {orgName}</p>
           <p className="mt-3 text-sm text-slate-500">Verify your identity to continue.</p>
         </div>
-        <IdentifyForm />
+        <IdentifyForm orgDisplayName={orgName} />
       </div>
     </div>
   );

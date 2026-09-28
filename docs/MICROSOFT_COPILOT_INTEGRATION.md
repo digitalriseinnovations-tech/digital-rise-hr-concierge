@@ -6,38 +6,79 @@ TAQA's stated long-term requirement: employees should reach the HR AI Employee t
 
 ```
 Microsoft 365 Copilot / Teams
-        ↓  (Copilot Studio "action" — an HTTP call the Copilot runtime makes)
-Digital Rise integration / API layer
-   src/app/api/integrations/copilot/*
-        ↓  (reuses the SAME functions the employee chat UI already calls)
+        ↓  (MCP tool call — Streamable HTTP)     ↓  (Copilot Studio custom-connector "action" — plain HTTP)
+   src/app/api/mcp/route.ts                 src/app/api/integrations/copilot/*
+   src/lib/concierge/mcp-tools.ts (adapter)       ↓
+        ↓  (both call the SAME lib functions the employee chat UI already calls)
 HR AI Employee
-   src/lib/concierge/orchestrator.ts (runConciergeTurn)
+   src/lib/concierge/{leave,training,knowledge,identity}.ts, orchestrator.ts (runConciergeTurn)
         ↓
 HR knowledge + employee data + HR actions
    Supabase: employees, leave_requests, training_registrations, hr_requests, hr_knowledge_base
 ```
 
+Two front doors (MCP and REST), one HR service layer underneath — neither surface duplicates HR logic; both are thin adapters.
+
 The integration layer is deliberately thin. It does not reimplement anything — every endpoint calls the exact same library functions (`identifyEmployee`, `getMyLeaveBalance`, `runConciergeTurn`, …) that the employee-facing chat UI already uses, which is why every existing safety property (confirmation-before-write, the Anthropic/email test-runtime guards, idempotency) applies automatically rather than needing to be rebuilt for a second surface.
 
 ## What's implemented right now (demo-grade)
 
-Three endpoints under `src/app/api/integrations/copilot/`, each requiring an `X-Copilot-Api-Key` header matched against `COPILOT_INTEGRATION_API_KEY` (a Vercel env var, unset by default — the endpoints fail closed with 401 if it's not configured, not bypassed):
+**Two integration surfaces, both reusing the same HR service layer:**
+
+### A. REST / OpenAPI (custom connector / actions)
+
+Six endpoints under `src/app/api/integrations/copilot/`, each requiring an `X-Copilot-Api-Key` header matched against `COPILOT_INTEGRATION_API_KEY` (a Vercel env var, unset by default — the endpoints fail closed with 401 if it's not configured, not bypassed). Full OpenAPI 3.0 spec: `docs/copilot/openapi.yaml`.
 
 | Endpoint | Method | Reuses | Purpose |
 |---|---|---|---|
 | `/api/integrations/copilot/employee-context` | GET | `identifyEmployee()` | Resolve `employee_code` + `email` → first name / full name. |
 | `/api/integrations/copilot/leave-balance` | GET | `getMyLeaveBalance()` | Read-only leave balance for one leave type. |
-| `/api/integrations/copilot/message` | POST | `startConversation()` + `runConciergeTurn()` | The core of the integration — routes a Copilot-relayed message through the real HR Concierge orchestrator and returns its reply. |
+| `/api/integrations/copilot/leave-requests` | GET | `getMyLeaveRequests()` | Read-only list of the employee's recent leave requests. |
+| `/api/integrations/copilot/my-training` | GET | `getMyTraining()` | Read-only list of the employee's training registrations/status. |
+| `/api/integrations/copilot/hr-policy` | GET | `searchHrKnowledge()` | Read-only HR knowledge base search. |
+| `/api/integrations/copilot/message` | POST | `startConversation()` + `runConciergeTurn()` | The core conversational integration — routes a Copilot-relayed message through the real HR Concierge orchestrator and returns its reply. |
 
-Every call re-verifies `employee_code` + `email` (the same two-factor check `/api/concierge/identify` uses) — there is no session cookie here, matching how a stateless Copilot Studio connector action actually calls out.
+### B. MCP (Model Context Protocol — the native Microsoft Copilot Studio agent experience)
+
+`/api/mcp` (`src/app/api/mcp/route.ts`) — a Streamable HTTP MCP server, read-only, exposing six tools that call the exact same functions as the REST layer above (`src/lib/concierge/mcp-tools.ts` is the adapter; it contains no HR logic of its own):
+
+| MCP tool | Reuses | Purpose |
+|---|---|---|
+| `get_employee_profile` | `identifyEmployee()` (via `identifyCopilotEmployee`) | Resolve first/full name. |
+| `get_leave_balance` | `getMyLeaveBalance()` | Leave balance for one type. |
+| `get_leave_requests` | `getMyLeaveRequests()` | Recent leave requests + status. |
+| `get_hr_policy` | `searchHrKnowledge()` | HR knowledge base search. |
+| `get_my_training` | `getMyTraining()` | Training registrations + status. |
+| `get_training_status` | `getMyTraining()` (filtered) | One named program's status — a filtered view of `get_my_training`, not a second data source. |
+
+Transactional actions (leave submission, training enrollment, mentorship/coaching, escalation) are **not** exposed via MCP yet — read-only first, so the initial Copilot connection can be proven safe before anything write-capable is connected.
+
+Every call on both surfaces re-verifies `employee_code` + `email` (the same two-factor check `/api/concierge/identify` uses) — there is no session cookie or session ID on either surface, matching how a stateless Copilot Studio connector/MCP tool call actually works. No tool on either surface accepts a raw internal employee ID from the caller.
+
+## Microsoft Copilot Studio configuration values (MCP)
+
+When adding this as an MCP connection in Copilot Studio:
+
+| Field | Value |
+|---|---|
+| Server name | `Digital Rise HR Concierge` (or any label you choose) |
+| Server description | `Read-only HR data for Digital Rise Innovations employees (leave, training, HR policy)` |
+| Server URL | `https://<your-vercel-deployment>/api/mcp` |
+| Transport | Streamable HTTP |
+| Authentication | API Key |
+| Header name | `X-Copilot-Api-Key` |
+| Header value | the `COPILOT_INTEGRATION_API_KEY` value configured in Vercel |
+
+Copilot Studio's generic "API Key" authentication type is what maps to this — there is no OAuth/Entra step for this demo-grade auth (see the Authentication section below for the production alternative).
 
 ## Recommended showcase approach
 
-For the TAQA demo itself, **do not attempt a live Copilot Studio connection** — there isn't tenant/admin access to build and test that reliably in two days, and a flaky live integration is worse for credibility than a clear explanation. Instead:
+The read-only MCP endpoint (`/api/mcp`) is real and connectable today from any MCP-compatible client, including Copilot Studio's own MCP connection UI — this can genuinely be demonstrated live, not just narrated. Recommended sequence:
 
-1. Show the architecture diagram above and the three real, working endpoints (e.g. via a `curl`/Postman call during the demo, or screen-shared).
-2. Frame it explicitly: "this is the exact API surface a Copilot Studio action would call — the HR AI Employee logic itself doesn't change based on which front-end reaches it."
-3. If desired, a **very small custom Teams/Copilot Studio "topic"** calling `/api/integrations/copilot/message` could be built after the demo, once TAQA commits — that's a Copilot Studio configuration task (low-code, inside Microsoft's own tooling), not a codebase task.
+1. Show the architecture diagram above and the working endpoints on both surfaces (e.g. via a `curl`/Postman call, or a live Copilot Studio MCP connection configured with the values in "Microsoft Copilot Studio configuration values" above).
+2. Frame it explicitly: "this is the exact API surface a Copilot Studio action or MCP tool would call — the HR AI Employee logic itself doesn't change based on which front-end reaches it."
+3. Keep the live connection to READ-ONLY tools for this stage — no leave submission, enrollment, or escalation is reachable via MCP yet, by design (see "What's implemented" above).
+4. If desired, a **very small custom Teams/Copilot Studio "topic"** calling `/api/integrations/copilot/message` (the conversational REST endpoint) could be built after the demo, once TAQA commits — that's a Copilot Studio configuration task (low-code, inside Microsoft's own tooling), not a codebase task.
 
 ## Authentication approach
 

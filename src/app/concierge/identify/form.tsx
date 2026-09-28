@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export function IdentifyForm() {
+export function IdentifyForm({ orgDisplayName }: { orgDisplayName: string }) {
   const router = useRouter();
   const [employeeCode, setEmployeeCode] = useState("");
   const [email, setEmail] = useState("");
@@ -57,7 +57,7 @@ export function IdentifyForm() {
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@northstarglobal.com"
+          placeholder="you@yourcompany.com"
           className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
           autoComplete="off"
         />
@@ -70,7 +70,7 @@ export function IdentifyForm() {
       >
         {loading ? "Verifying…" : "Continue"}
       </button>
-      <p className="text-center text-xs text-slate-400">Demo environment · Northstar Global (fictional)</p>
+      <p className="text-center text-xs text-slate-400">Demo environment · {orgDisplayName}</p>
     </form>
   );
 }

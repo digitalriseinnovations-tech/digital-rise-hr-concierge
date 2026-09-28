@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { searchHrKnowledge } from "@/lib/concierge/knowledge";
 import { listTrainingPrograms } from "@/lib/concierge/training";
+import { getOrgDisplayName } from "@/lib/concierge/org";
 
 export default async function GettingStartedPage() {
   const [onboarding, programs] = await Promise.all([
@@ -8,13 +9,14 @@ export default async function GettingStartedPage() {
     listTrainingPrograms(),
   ]);
   const mandatoryPrograms = programs.filter((p) => p.mandatory);
+  const orgName = getOrgDisplayName();
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-extrabold text-slate-900">Getting Started</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Onboarding guidance for your first weeks at Northstar Global, grounded in the real HR knowledge base — ask
+          Onboarding guidance for your first weeks at {orgName}, grounded in the real HR knowledge base — ask
           HR Concierge anything below for more detail.
         </p>
       </div>
@@ -60,7 +62,7 @@ export default async function GettingStartedPage() {
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Need something else?</div>
         <p className="text-sm text-slate-600 mb-3">
           For IT/system access, benefits enrollment, or anything not covered here, ask HR Concierge directly — it can
-          answer from Northstar Global's HR policies or connect you with a real person.
+          answer from {orgName}'s HR policies or connect you with a real person.
         </p>
         <Link
           href="/concierge"
