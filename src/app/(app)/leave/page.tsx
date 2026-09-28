@@ -1,5 +1,6 @@
 import { requirePermission } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { lookupActiveOrganization } from "@/lib/concierge/organizations";
 import Link from "next/link";
 import { MonthFilter } from "./month-filter";
 
@@ -39,31 +40,53 @@ export default async function LeaveAdminPage({ searchParams }: { searchParams: P
   const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
   const nextMonth = month === 12 ? `${year + 1}-01-01` : `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
+  // Organization isolation (migration_011/012) — every query below that
+  // returns employee-linked data is explicitly scoped to the active
+  // organization, not left to the UI to filter. Falls back to unscoped
+  // (today's behavior) if organization scoping isn't applied yet — same
+  // graceful pattern as src/lib/concierge/organizations.ts everywhere else.
+  const orgLookup = await lookupActiveOrganization();
+  const activeOrgId = orgLookup.supported && orgLookup.organization ? orgLookup.organization.id : null;
+
+  let pendingQuery = supabase
+    .from("leave_requests")
+    .select("id, leave_type, start_date, end_date, days_count, reason, status, manager_email, created_at, employees:employee_id!inner (id, full_name, employee_code, country, organization_id)")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  let monthLeavesQuery = supabase
+    .from("leave_requests")
+    .select("id, leave_type, start_date, end_date, days_count, status, reason, decided_by_email, decided_at, employees:employee_id!inner (id, full_name, employee_code, country, organization_id)")
+    .gte("start_date", monthStart)
+    .lt("start_date", nextMonth)
+    .eq("status", "approved")
+    .order("start_date", { ascending: true });
+  // Balances — current year (year filter on the picker is for HISTORY context, but balances always show current state)
+  let balancesQuery = supabase.from("current_leave_balances").select("*").eq("year", year).order("full_name", { ascending: true });
+
+  let yearOptionsQuery = supabase
+    .from("leave_requests")
+    .select("start_date, employees:employee_id!inner (organization_id)")
+    .order("start_date", { ascending: false })
+    .limit(500);
+
+  if (activeOrgId) {
+    pendingQuery = pendingQuery.eq("employees.organization_id", activeOrgId);
+    monthLeavesQuery = monthLeavesQuery.eq("employees.organization_id", activeOrgId);
+    balancesQuery = balancesQuery.eq("organization_id", activeOrgId);
+    yearOptionsQuery = yearOptionsQuery.eq("employees.organization_id", activeOrgId);
+  }
+
   const [
     { data: pending },
     { data: monthLeaves },
     { data: balances },
     { data: yearOptions },
   ] = await Promise.all([
-    // Pending — global, not month-filtered
-    supabase.from("leave_requests")
-      .select("id, leave_type, start_date, end_date, days_count, reason, status, manager_email, created_at, employees:employee_id (id, full_name, employee_code, country)")
-      .eq("status", "pending")
-      .order("created_at", { ascending: false }),
-    // All leaves whose start_date falls in the selected month (approved + decided in that month)
-    supabase.from("leave_requests")
-      .select("id, leave_type, start_date, end_date, days_count, status, reason, decided_by_email, decided_at, employees:employee_id (id, full_name, employee_code, country)")
-      .gte("start_date", monthStart)
-      .lt("start_date", nextMonth)
-      .eq("status", "approved")
-      .order("start_date", { ascending: true }),
-    // Balances — current year (year filter on the picker is for HISTORY context, but balances always show current state)
-    supabase.from("current_leave_balances")
-      .select("*")
-      .eq("year", year)
-      .order("full_name", { ascending: true }),
+    pendingQuery,
+    monthLeavesQuery,
+    balancesQuery,
     // For year picker — get all distinct years that have leave_requests
-    supabase.from("leave_requests").select("start_date").order("start_date", { ascending: false }).limit(500),
+    yearOptionsQuery,
   ]);
 
   // Years that have history

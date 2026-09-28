@@ -2,15 +2,22 @@ import { NextResponse } from "next/server";
 import { requireImportPermission, isAuthFailure } from "@/lib/employee-import-auth";
 import { createClient } from "@/lib/supabase/server";
 import { lookupActiveOrganization, employeeBelongsToActiveOrganization } from "@/lib/concierge/organizations";
+import { provisionAnnualLeaveBalance } from "@/lib/concierge/leave";
 
 /**
  * PATCH /api/employees/[id] — edits an existing employee's basic
  * information plus the two entitlement fields that already live directly
  * on the employees row (annual_leave_days, air_ticket_entitlement/
- * currency). No other table is written here — leave_balances (a per-year
- * ledger) and benefits_credits have no existing edit UI anywhere in this
+ * currency). benefits_credits has no existing edit UI anywhere in this
  * app, so this route does not add one; that would be a new HR module, not
  * the minimum fix for the missing edit page.
+ *
+ * annual_leave_days is treated as the entitlement INPUT, synced into the
+ * canonical leave_balances record via provisionAnnualLeaveBalance() — the
+ * same function employee import uses — so Employee Profile, /leave, and
+ * MCP get_leave_balance all agree with what was just saved here. That sync
+ * only ever touches entitlement_days; accrued/taken/encashed/
+ * carry_forward are never reset by an edit.
  *
  * Uses the staff's own authenticated session (not the service-role
  * client) so the existing "employees write" RLS policy
@@ -103,6 +110,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
       ? "Another employee in this organization already uses that employee code."
       : error.message;
     return NextResponse.json({ error: message }, { status: 400 });
+  }
+
+  if (updates.annual_leave_days !== null) {
+    await provisionAnnualLeaveBalance(id, updates.annual_leave_days);
   }
 
   return NextResponse.json({ employee: updated });

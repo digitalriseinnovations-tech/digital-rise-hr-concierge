@@ -54,6 +54,64 @@ export async function getMyLeaveBalance(employeeId: string, leaveType: LeaveType
   };
 }
 
+// ── Canonical leave balance provisioning ────────────────────────────────
+// The ONE place that creates/syncs a leave_balances row for the current
+// year's 'annual' entitlement, called from both employee import
+// (commitImport) and the employee edit route whenever annual_leave_days
+// is set/changed. This is what makes leave_balances (read by Employee
+// Profile, /leave, and getMyLeaveBalance above — i.e. MCP/Copilot) the
+// single canonical source, instead of employees.annual_leave_days being a
+// second, disconnected number nothing actually reads.
+
+export interface ProvisionAnnualLeaveBalanceResult {
+  created: boolean;
+  updated: boolean;
+}
+
+/**
+ * Creates the current year's 'annual' leave_balances row if none exists
+ * yet (entitlement_days = accrued_days = annualLeaveDays, taken_days = 0
+ * — matching this product's existing accrual semantics: the seeded demo
+ * data sets accrued_days equal to entitlement_days at creation, i.e. the
+ * annual entitlement is immediately available, not prorated — see
+ * supabase/seed_hr_concierge_demo.sql). If a row already exists, updates
+ * ONLY entitlement_days — accrued_days/taken_days/encashed_days/
+ * carry_forward_days are never touched here, so real leave history
+ * (approvals already deducted via deduct_leave_balance()) is never reset
+ * or overwritten. Entitlement, accrued, and taken remain three separate
+ * columns throughout — this never collapses them into one value, so a
+ * future prorated/monthly accrual rule can replace the "accrued =
+ * entitlement on creation" default here without another data-model
+ * change.
+ */
+export async function provisionAnnualLeaveBalance(employeeId: string, annualLeaveDays: number): Promise<ProvisionAnnualLeaveBalanceResult> {
+  const supabase = createServiceClient();
+  const year = new Date().getFullYear();
+
+  const { data: existing } = await supabase
+    .from("leave_balances")
+    .select("id")
+    .eq("employee_id", employeeId)
+    .eq("year", year)
+    .eq("leave_type", "annual")
+    .maybeSingle();
+
+  if (existing) {
+    await supabase.from("leave_balances").update({ entitlement_days: annualLeaveDays, updated_at: new Date().toISOString() }).eq("id", existing.id);
+    return { created: false, updated: true };
+  }
+
+  await supabase.from("leave_balances").insert({
+    employee_id: employeeId,
+    year,
+    leave_type: "annual",
+    entitlement_days: annualLeaveDays,
+    accrued_days: annualLeaveDays,
+    taken_days: 0,
+  });
+  return { created: true, updated: false };
+}
+
 // ── Deterministic date-year resolution ──────────────────────────────────
 // The model is unreliable at inferring which YEAR a bare "October 12 to
 // October 15" means (observed resolving to a past year during testing).

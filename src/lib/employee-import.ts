@@ -2,6 +2,7 @@ import "server-only";
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
 import { createServiceClient } from "@/lib/supabase/service";
+import { provisionAnnualLeaveBalance } from "./concierge/leave";
 import { CANONICAL_FIELDS, suggestColumnMapping, type ColumnMapping } from "./employee-import-fields";
 
 export { CANONICAL_FIELDS, suggestColumnMapping, type ColumnMapping } from "./employee-import-fields";
@@ -269,32 +270,43 @@ export async function commitImport(
     }
 
     if (row.action === "create") {
-      const { error } = await supabase.from("employees").insert({
-        organization_id: organizationId,
-        employee_code: row.data.employee_code,
-        full_name: row.data.full_name,
-        email: row.data.email,
-        department: row.data.department,
-        designation: row.data.designation,
-        manager_email: row.data.manager_email,
-        joining_date: row.data.joining_date,
-        status: row.data.status,
-        location: row.data.location,
-        ...(row.data.annual_leave_days !== null ? { annual_leave_days: row.data.annual_leave_days } : {}),
-        created_by: actorFinanceUserId,
-        updated_by: actorFinanceUserId,
-      });
-      if (error) {
+      const { data: inserted, error } = await supabase
+        .from("employees")
+        .insert({
+          organization_id: organizationId,
+          employee_code: row.data.employee_code,
+          full_name: row.data.full_name,
+          email: row.data.email,
+          department: row.data.department,
+          designation: row.data.designation,
+          manager_email: row.data.manager_email,
+          joining_date: row.data.joining_date,
+          status: row.data.status,
+          location: row.data.location,
+          ...(row.data.annual_leave_days !== null ? { annual_leave_days: row.data.annual_leave_days } : {}),
+          created_by: actorFinanceUserId,
+          updated_by: actorFinanceUserId,
+        })
+        .select("id")
+        .single();
+      if (error || !inserted) {
         summary.errored++;
-        summary.errors.push({ rowNumber: row.rowNumber, employeeCode: row.employeeCode, email: row.email, errors: [error.message] });
+        summary.errors.push({ rowNumber: row.rowNumber, employeeCode: row.employeeCode, email: row.email, errors: [error?.message ?? "Insert failed."] });
       } else {
         summary.created++;
+        // Canonical leave balance provisioning — the same operation the
+        // employee edit route performs. Only runs when the spreadsheet
+        // actually provided a value; an employee with no entitlement
+        // column mapped gets no leave_balances row here, same as before.
+        if (row.data.annual_leave_days !== null) {
+          await provisionAnnualLeaveBalance(inserted.id, row.data.annual_leave_days);
+        }
       }
       continue;
     }
 
     // action === "update"
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from("employees")
       .update({
         full_name: row.data.full_name,
@@ -309,13 +321,18 @@ export async function commitImport(
         updated_by: actorFinanceUserId,
       })
       .eq("organization_id", organizationId)
-      .eq("employee_code", row.data.employee_code);
+      .eq("employee_code", row.data.employee_code)
+      .select("id")
+      .single();
 
-    if (error) {
+    if (error || !updated) {
       summary.errored++;
-      summary.errors.push({ rowNumber: row.rowNumber, employeeCode: row.employeeCode, email: row.email, errors: [error.message] });
+      summary.errors.push({ rowNumber: row.rowNumber, employeeCode: row.employeeCode, email: row.email, errors: [error?.message ?? "Update failed."] });
     } else {
       summary.updated++;
+      if (row.data.annual_leave_days !== null) {
+        await provisionAnnualLeaveBalance(updated.id, row.data.annual_leave_days);
+      }
     }
   }
 
