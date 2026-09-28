@@ -1,6 +1,7 @@
 import { requireUser, can } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { lookupActiveOrganization, employeeBelongsToActiveOrganization } from "@/lib/concierge/organizations";
+import { getTrainingSummaryForEmployee } from "@/lib/concierge/training";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 
@@ -28,11 +29,13 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
     { data: salary },
     { data: leave },
     { data: benefits },
+    trainingSummary,
   ] = await Promise.all([
     supabase.from("employees").select("*").eq("id", id).maybeSingle(),
     supabase.from("salary_records").select("*").eq("employee_id", id).order("period_year", { ascending: false }).order("period_month", { ascending: false }).limit(12),
     supabase.from("leave_balances").select("*").eq("employee_id", id).order("year", { ascending: false }),
     supabase.from("benefits_credits").select("*").eq("employee_id", id).order("created_at", { ascending: false }).limit(20),
+    getTrainingSummaryForEmployee(id),
   ]);
 
   if (empError || !employee) {
@@ -161,6 +164,42 @@ export default async function EmployeeProfilePage({ params }: { params: Promise<
               {money(employee.air_ticket_entitlement, employee.air_ticket_currency)}
             </div>
             <p className="text-xs text-slate-400 mt-1">Per cycle</p>
+          </div>
+
+          {/* Learning & Compliance */}
+          <div className="section-card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg font-extrabold text-navy-700">Learning &amp; Compliance</h2>
+              <Link href="/hr-learning" className="text-xs text-indigo-600 hover:underline">Training details →</Link>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-center mb-3">
+              <div className="rounded-lg bg-slate-50 py-2">
+                <div className="text-lg font-extrabold text-navy-700">{trainingSummary.assigned}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Assigned</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 py-2">
+                <div className="text-lg font-extrabold text-green-600">{trainingSummary.completed}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Completed</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 py-2">
+                <div className="text-lg font-extrabold text-navy-700">{trainingSummary.inProgress}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">In Progress</div>
+              </div>
+              <div className="rounded-lg bg-slate-50 py-2">
+                <div className="text-lg font-extrabold text-slate-500">{trainingSummary.notStarted}</div>
+                <div className="text-[10px] uppercase tracking-wide text-slate-400">Not Started</div>
+              </div>
+            </div>
+            {trainingSummary.overdue > 0 && (
+              <div className="text-xs font-semibold text-red-600 mb-2">{trainingSummary.overdue} overdue</div>
+            )}
+            {trainingSummary.nextDue ? (
+              <div className="text-xs text-slate-500">
+                Next due: <span className="font-medium text-slate-700">{trainingSummary.nextDue.programName}</span> · {trainingSummary.nextDue.dueDate}
+              </div>
+            ) : (
+              <div className="text-xs text-slate-400">Nothing currently due.</div>
+            )}
           </div>
 
           {/* Recent Benefits / Credits */}

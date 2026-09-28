@@ -36,6 +36,11 @@ export interface TrainingProgram {
   /** Where START/CONTINUE navigates to — a demo/external course URL, not
    * content this app hosts. Null means "no link configured yet". */
   trainingUrl: string | null;
+  /** "Internal", "Microsoft Learn", etc — where this training actually
+   * comes from. Null means not yet configured. This is informational only:
+   * completion is never auto-synced from an external provider (Microsoft
+   * or otherwise) — an employee/HR action is always what marks it done. */
+  provider: string | null;
 }
 
 function mapProgram(row: any): TrainingProgram {
@@ -53,17 +58,37 @@ function mapProgram(row: any): TrainingProgram {
     nextCohortStart: row.next_cohort_start,
     mandatory: row.mandatory,
     trainingUrl: row.training_url ?? null,
+    provider: row.provider ?? null,
   };
 }
 
-const PROGRAM_COLUMNS =
+const PROGRAM_COLUMNS_BASE =
   "id, name, description, duration_label, delivery_mode, location, eligibility, requires_manager_approval, seats_total, seats_available, next_cohort_start, mandatory, active, training_url";
+const PROGRAM_COLUMNS_FULL = `${PROGRAM_COLUMNS_BASE}, provider`;
+
+/**
+ * Selects training_programs, preferring the full column list (including
+ * migration_013's `provider`) and transparently falling back to the base
+ * columns if that migration hasn't been applied to this database yet —
+ * same graceful-degradation principle as
+ * src/lib/concierge/organizations.ts's lookupActiveOrganization(): this
+ * code must stay safe to deploy BEFORE the migration is manually run,
+ * never breaking the training feature that already works today.
+ */
+async function selectProgramColumns(
+  supabase: ReturnType<typeof createServiceClient>,
+  apply: (query: any) => PromiseLike<{ data: any; error: any }>,
+): Promise<{ data: any; error: any }> {
+  const full = await apply(supabase.from("training_programs").select(PROGRAM_COLUMNS_FULL));
+  if (!full.error) return full;
+  return apply(supabase.from("training_programs").select(PROGRAM_COLUMNS_BASE));
+}
 
 /** Active programs only — an inactive program never surfaces to employees,
  * matching how hr_knowledge_base's `active` flag already works. */
 export async function listTrainingPrograms(): Promise<TrainingProgram[]> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase.from("training_programs").select(PROGRAM_COLUMNS).eq("active", true).order("name");
+  const { data, error } = await selectProgramColumns(supabase, (q) => q.eq("active", true).order("name"));
   if (error || !data) return [];
   return data.map(mapProgram);
 }
@@ -73,7 +98,7 @@ export async function listTrainingPrograms(): Promise<TrainingProgram[]> {
  * found here either. */
 export async function getTrainingProgramByName(name: string): Promise<TrainingProgram | null> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase.from("training_programs").select(PROGRAM_COLUMNS).eq("active", true).ilike("name", `%${name}%`).limit(1).maybeSingle();
+  const { data, error } = await selectProgramColumns(supabase, (q) => q.eq("active", true).ilike("name", `%${name}%`).limit(1).maybeSingle());
   if (error || !data) return null;
   return mapProgram(data);
 }
@@ -99,25 +124,65 @@ export interface MyTrainingEntry {
   durationLabel: string | null;
   deliveryMode: string | null;
   trainingUrl: string | null;
+  provider: string | null;
   createdAt: string;
   dueDate: string | null;
   startedAt: string | null;
   completedAt: string | null;
   /** Always derived, never persisted: due_date < today AND not completed. */
   overdue: boolean;
+  /** Simplified employee-facing label: Not Started / In Progress /
+   * Completed / Overdue — derived from status+overdue, never a second
+   * status stored anywhere. See toDisplayStatus(). */
+  displayStatus: TrainingDisplayStatus;
+  /** When a follow-up reminder was last sent for this assignment, if ever. */
+  reminderSentAt: string | null;
 }
 
-const REGISTRATION_COLUMNS =
+const REGISTRATION_COLUMNS_BASE =
   "id, program_id, status, created_at, due_date, started_at, completed_at, " +
   "training_programs(name, description, requires_manager_approval, mandatory, duration_label, delivery_mode, training_url)";
+const REGISTRATION_COLUMNS_FULL =
+  "id, program_id, status, created_at, due_date, started_at, completed_at, reminder_sent_at, " +
+  "training_programs(name, description, requires_manager_approval, mandatory, duration_label, delivery_mode, training_url, provider)";
+
+/** Same graceful fallback as selectProgramColumns() above, for the
+ * training_registrations side (reminder_sent_at + the embedded program's
+ * provider — both migration_013). */
+async function selectRegistrationColumns(
+  supabase: ReturnType<typeof createServiceClient>,
+  apply: (query: any) => PromiseLike<{ data: any; error: any }>,
+): Promise<{ data: any; error: any }> {
+  const full = await apply(supabase.from("training_registrations").select(REGISTRATION_COLUMNS_FULL));
+  if (!full.error) return full;
+  return apply(supabase.from("training_registrations").select(REGISTRATION_COLUMNS_BASE));
+}
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+export type TrainingDisplayStatus = "Not Started" | "In Progress" | "Completed" | "Overdue";
+
+/**
+ * The ONE mapping from the real DB status + derived overdue flag to the
+ * four simplified labels requested for the employee-facing UI/Concierge
+ * responses and Training Analytics. Never introduces a new stored status
+ * value — 'assigned'/'requested'/'confirmed' all mean "Not Started" from
+ * the employee's point of view; 'waitlisted'/'declined'/'cancelled' are
+ * shown via their real status elsewhere, not folded into these four.
+ */
+export function toDisplayStatus(status: TrainingRegistrationStatus, overdue: boolean): TrainingDisplayStatus {
+  if (overdue) return "Overdue";
+  if (status === "completed") return "Completed";
+  if (status === "in_progress") return "In Progress";
+  return "Not Started";
+}
+
 function mapRegistration(row: any): MyTrainingEntry {
   const program = row.training_programs ?? {};
   const dueDate: string | null = row.due_date ?? null;
+  const overdue = Boolean(dueDate) && dueDate! < todayIso() && row.status !== "completed";
   return {
     id: row.id,
     programId: row.program_id,
@@ -129,35 +194,63 @@ function mapRegistration(row: any): MyTrainingEntry {
     durationLabel: program.duration_label ?? null,
     deliveryMode: program.delivery_mode ?? null,
     trainingUrl: program.training_url ?? null,
+    provider: program.provider ?? null,
     createdAt: row.created_at,
     dueDate,
     startedAt: row.started_at ?? null,
     completedAt: row.completed_at ?? null,
-    overdue: Boolean(dueDate) && dueDate! < todayIso() && row.status !== "completed",
+    overdue,
+    displayStatus: toDisplayStatus(row.status, overdue),
+    reminderSentAt: row.reminder_sent_at ?? null,
   };
 }
 
 /** Scoped to one employee — never any other employee's registrations. */
 export async function getMyTraining(employeeId: string): Promise<MyTrainingEntry[]> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("training_registrations")
-    .select(REGISTRATION_COLUMNS)
-    .eq("employee_id", employeeId)
-    .order("created_at", { ascending: false });
-
+  const { data, error } = await selectRegistrationColumns(supabase, (q) =>
+    q.eq("employee_id", employeeId).order("created_at", { ascending: false }),
+  );
   if (error || !data) return [];
   return data.map(mapRegistration);
 }
 
+export interface TrainingSummary {
+  assigned: number;
+  inProgress: number;
+  completed: number;
+  notStarted: number;
+  overdue: number;
+  /** Earliest upcoming due_date across everything not yet completed, or
+   * null if nothing has a due date. */
+  nextDue: { programName: string; dueDate: string } | null;
+}
+
+/** Aggregate counts for the Employee Profile "Learning & Compliance"
+ * section — reuses getMyTraining(), no second query/shape. */
+export async function getTrainingSummaryForEmployee(employeeId: string): Promise<TrainingSummary> {
+  const entries = await getMyTraining(employeeId);
+  const active = entries.filter((e) => !["declined", "cancelled"].includes(e.status));
+
+  const upcoming = active
+    .filter((e) => e.dueDate && e.status !== "completed")
+    .sort((a, b) => (a.dueDate! < b.dueDate! ? -1 : 1));
+
+  return {
+    assigned: active.length,
+    inProgress: active.filter((e) => e.displayStatus === "In Progress").length,
+    completed: active.filter((e) => e.displayStatus === "Completed").length,
+    notStarted: active.filter((e) => e.displayStatus === "Not Started").length,
+    overdue: active.filter((e) => e.displayStatus === "Overdue").length,
+    nextDue: upcoming.length > 0 ? { programName: upcoming[0].programName, dueDate: upcoming[0].dueDate! } : null,
+  };
+}
+
 export async function findExistingRegistration(employeeId: string, programId: string): Promise<MyTrainingEntry | null> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("training_registrations")
-    .select(REGISTRATION_COLUMNS)
-    .eq("employee_id", employeeId)
-    .eq("program_id", programId)
-    .maybeSingle();
+  const { data, error } = await selectRegistrationColumns(supabase, (q) =>
+    q.eq("employee_id", employeeId).eq("program_id", programId).maybeSingle(),
+  );
   if (error || !data) return null;
   return mapRegistration(data);
 }
@@ -289,4 +382,34 @@ export async function startTrainingProgress(employeeId: string, programName: str
   }
 
   return { ok: true, found: true, status: registration.status, trainingUrl: program.trainingUrl, programName: program.name };
+}
+
+/**
+ * Smallest safe demo-ready reminder mechanism (deliberately NOT a real
+ * notification platform): records that HR followed up on a specific
+ * assignment by stamping reminder_sent_at, and returns demoMode: true —
+ * no email is actually sent by this function. Employee email addresses in
+ * this environment resolve under organizations' own real domains (not a
+ * clearly-fictional one), so sending real email from a "reminder" feature
+ * built the night before a demo is exactly the kind of risk this
+ * deliberately avoids; Training Analytics labels this clearly as a demo
+ * action, not a delivered notification. Wiring in a real send later is a
+ * small addition (reusing src/lib/email.ts's existing send() pattern),
+ * not a rewrite.
+ */
+export interface TrainingReminderResult {
+  ok: boolean;
+  demoMode: true;
+  reminderSentAt?: string;
+  message: string;
+}
+
+export async function recordTrainingReminder(registrationId: string): Promise<TrainingReminderResult> {
+  const supabase = createServiceClient();
+  const sentAt = new Date().toISOString();
+  const { error } = await supabase.from("training_registrations").update({ reminder_sent_at: sentAt }).eq("id", registrationId);
+  if (error) {
+    return { ok: false, demoMode: true, message: "Could not record the reminder. Please try again." };
+  }
+  return { ok: true, demoMode: true, reminderSentAt: sentAt, message: "Reminder logged for the demo — no email was actually sent." };
 }
