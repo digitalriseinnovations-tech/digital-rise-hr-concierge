@@ -1,5 +1,6 @@
 import { requireUser, can } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { lookupActiveOrganization } from "@/lib/concierge/organizations";
 import Link from "next/link";
 
 function statusBadge(status: string) {
@@ -23,10 +24,18 @@ export default async function EmployeesPage() {
   const canSeeSalary = can(user.role, "salary.view");
 
   const baseColumns = "id, employee_code, full_name, email, department, designation, country, status, joining_date";
-  const { data: employees } = await supabase
+  const orgLookup = await lookupActiveOrganization();
+  let employeesQuery = supabase
     .from("employees")
     .select(canSeeSalary ? `${baseColumns}, salary_currency, basic_salary` : baseColumns)
     .order("full_name", { ascending: true });
+  // Scope to the active organization once migration_011 is applied — see
+  // src/lib/concierge/organizations.ts. Falls back to the unscoped listing
+  // (today's behavior) if organization scoping isn't set up yet.
+  if (orgLookup.supported && orgLookup.organization) {
+    employeesQuery = employeesQuery.eq("organization_id", orgLookup.organization.id);
+  }
+  const { data: employees } = await employeesQuery;
 
   const columnCount = canSeeSalary ? 8 : 7;
 
@@ -39,7 +48,10 @@ export default async function EmployeesPage() {
           <p className="text-sm text-slate-500 mt-1">{(employees ?? []).length} total · sortable by status, department, country</p>
         </div>
         {canEdit && (
-          <Link href="/employees/new" className="btn-primary">+ Add Employee</Link>
+          <div className="flex gap-2">
+            <Link href="/employees/import" className="btn-ghost">Import Employees</Link>
+            <Link href="/employees/new" className="btn-primary">+ Add Employee</Link>
+          </div>
         )}
       </header>
 

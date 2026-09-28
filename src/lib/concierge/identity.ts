@@ -1,6 +1,7 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { createServiceClient } from "@/lib/supabase/service";
+import { lookupActiveOrganization } from "./organizations";
 
 /**
  * Minimal employee identity for the Concierge demo — NOT a second auth
@@ -111,14 +112,27 @@ function firstNameOf(fullName: string): string {
  */
 export async function identifyEmployee(employeeCode: string, email: string): Promise<ConciergeEmployee | null> {
   const supabase = createServiceClient();
-  const { data, error } = await supabase
+  const orgLookup = await lookupActiveOrganization();
+
+  // Fail closed: migration_011 is applied but no active organization is
+  // configured/found — this is a real misconfiguration, never fall through
+  // to an unscoped lookup that could match another organization's employee.
+  if (orgLookup.supported && !orgLookup.organization) return null;
+
+  let query = supabase
     .from("employees")
     .select("id, full_name, employee_code, email, status")
     .eq("employee_code", employeeCode.trim())
     .eq("email", email.trim().toLowerCase())
-    .eq("status", "active")
-    .maybeSingle();
+    .eq("status", "active");
 
+  // Only scope by organization once migration_011 has actually been
+  // applied — otherwise behave exactly as before (see organizations.ts).
+  if (orgLookup.supported && orgLookup.organization) {
+    query = query.eq("organization_id", orgLookup.organization.id);
+  }
+
+  const { data, error } = await query.maybeSingle();
   if (error || !data) return null;
   return { id: data.id, firstName: firstNameOf(data.full_name), fullName: data.full_name };
 }
