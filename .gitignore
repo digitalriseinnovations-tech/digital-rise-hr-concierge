@@ -25,3 +25,4 @@ yarn-debug.log*
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+design-review/
