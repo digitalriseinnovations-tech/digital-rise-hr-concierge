@@ -21,15 +21,27 @@ function LoginFormInner({ branding }: { branding: ProductBranding }) {
     e.preventDefault();
     setLoading(true);
     setError(null);
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
-      setError(error.message);
+    // Both createClient() (can throw if the Supabase URL/anon key baked
+    // into this build are missing or malformed) and signInWithPassword()
+    // (a real network call) were previously unguarded — either throwing
+    // left the button stuck on "Signing in…" forever with setLoading(false)
+    // never reached and no feedback at all. The try/catch/finally here
+    // guarantees the button always exits the loading state and the
+    // employee always sees a message, success or failure.
+    try {
+      const supabase = createClient();
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setError(error.message);
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError("Unable to sign in right now. Please try again shortly.");
+    } finally {
       setLoading(false);
-      return;
     }
-    router.push("/");
-    router.refresh();
   }
 
   return (
