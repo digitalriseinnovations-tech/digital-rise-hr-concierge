@@ -16,7 +16,7 @@
 
 insert into hr_knowledge_base (category, topic, question, answer, keywords)
 select 'general', 'Payroll', 'When and how am I paid?',
-  'Salaries are paid monthly, processed by the last business day of each month, directly to your registered bank account. Payslips are available through HR — ask HR Concierge to connect you with People & Culture if you need a copy or have a payroll query specific to your pay.',
+  'Salaries are paid monthly, processed by the last business day of each month, directly to your registered bank account. Payslips are available through HR — ask AIVA to connect you with People & Culture if you need a copy or have a payroll query specific to your pay.',
   array['payroll','payslip','salary date','pay date','when do i get paid']
 where not exists (select 1 from hr_knowledge_base where topic = 'Payroll');
 
@@ -28,7 +28,7 @@ where not exists (select 1 from hr_knowledge_base where topic = 'Probation Perio
 
 insert into hr_knowledge_base (category, topic, question, answer, keywords)
 select 'general', 'Employee Handbook', 'Where can I find the employee handbook?',
-  'The employee handbook covering full company policies is shared during onboarding and available from People & Culture on request — ask HR Concierge to connect you with HR if you need a fresh copy.',
+  'The employee handbook covering full company policies is shared during onboarding and available from People & Culture on request — ask AIVA to connect you with HR if you need a fresh copy.',
   array['employee handbook','policy handbook','company handbook','staff handbook']
 where not exists (select 1 from hr_knowledge_base where topic = 'Employee Handbook');
 

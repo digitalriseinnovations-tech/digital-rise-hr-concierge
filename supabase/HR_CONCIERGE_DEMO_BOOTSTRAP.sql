@@ -770,7 +770,7 @@ on conflict (employee_id, year, leave_type) do nothing;
 -- ── HR Knowledge Base (Northstar Global — entirely fictional policy) ────
 insert into hr_knowledge_base (category, topic, question, answer, keywords) values
   ('leave', 'Annual Leave', 'What is the annual leave policy?',
-   'Northstar Global employees accrue 24 days of annual leave per calendar year, credited from your start date. Leave is requested through HR Concierge or the leave request form and is approved by your direct manager.',
+   'Northstar Global employees accrue 24 days of annual leave per calendar year, credited from your start date. Leave is requested through AIVA or the leave request form and is approved by your direct manager.',
    array['annual leave','vacation','pto','holiday','days off']),
   ('leave', 'Sick Leave', 'What is the sick leave policy?',
    'Full-pay sick leave is available for up to 10 days per year. For absences longer than 3 consecutive days, a medical certificate should be provided to People & Culture.',
@@ -806,13 +806,13 @@ insert into hr_knowledge_base (category, topic, question, answer, keywords) valu
    'Benefits enrollment happens during your first week with People & Culture. Details on health, retirement, and wellness benefits are covered in your onboarding session and summarized in your welcome pack.',
    array['benefits enrollment','welcome pack','benefits information']),
   ('learning', 'Training Overview', 'What training programs are available?',
-   'Northstar Global offers the Emerging Leaders Program, Strategic Leadership Essentials, AI & Digital Productivity, and mandatory annual Cybersecurity Awareness training. Ask HR Concierge for eligibility and how to register.',
+   'Northstar Global offers the Emerging Leaders Program, Strategic Leadership Essentials, AI & Digital Productivity, and mandatory annual Cybersecurity Awareness training. Ask AIVA for eligibility and how to register.',
    array['training','learning','development programs','courses']),
   ('learning', 'Mandatory Training', 'What mandatory training do I need to complete?',
    'All employees complete Cybersecurity Awareness training annually. Some roles have additional compliance training assigned by your manager or People & Culture.',
    array['mandatory training','compliance training','cybersecurity awareness']),
   ('mentorship', 'Mentorship Program', 'How does the mentorship program work?',
-   'The Northstar Global mentorship program pairs employees with a senior mentor in their area of interest for a 3-month cycle, with monthly 1:1 sessions. You can request a mentor through HR Concierge, including a preferred focus area.',
+   'The Northstar Global mentorship program pairs employees with a senior mentor in their area of interest for a 3-month cycle, with monthly 1:1 sessions. You can request a mentor through AIVA, including a preferred focus area.',
    array['mentorship','mentor','mentee','mentoring program']),
   ('mentorship', 'Mentorship Eligibility', 'Who is eligible for the mentorship program?',
    'The mentorship program is open to all employees with at least 6 months of tenure. There is no seniority requirement to request a mentor.',
@@ -824,10 +824,10 @@ insert into hr_knowledge_base (category, topic, question, answer, keywords) valu
    'Northstar Global offers a confidential Employee Assistance Program (EAP) with counseling support, plus an annual wellness allowance that can be used for fitness, mental health, or wellbeing services.',
    array['wellbeing','eap','employee assistance program','mental health','counseling']),
   ('general', 'HR Contact', 'How do I contact HR directly?',
-   'For anything HR Concierge can''t help with, or if you''d prefer to speak with a person, ask to be connected to HR and a People & Culture team member will follow up with you directly.',
+   'For anything AIVA can''t help with, or if you''d prefer to speak with a person, ask to be connected to HR and a People & Culture team member will follow up with you directly.',
    array['contact hr','speak to hr','human resources contact']),
   ('general', 'Confidential Matters', 'How do I raise a sensitive or confidential HR matter?',
-   'For sensitive matters — grievances, workplace concerns, or anything you''d rather discuss privately — HR Concierge will connect you directly with a People & Culture team member rather than trying to resolve it in chat.',
+   'For sensitive matters — grievances, workplace concerns, or anything you''d rather discuss privately — AIVA will connect you directly with a People & Culture team member rather than trying to resolve it in chat.',
    array['confidential','sensitive matter','grievance','private concern','harassment'])
 ;
 
