@@ -13,7 +13,7 @@ export default async function ImportEmployeesPage() {
         <h1 className="font-display text-3xl font-extrabold text-navy-700">Import Employees</h1>
         <p className="text-sm text-slate-500 mt-1">
           Upload a spreadsheet to add or update employees for one organization — reuses the same employee model and
-          identity system as the rest of HR Concierge.
+          identity system as the rest of AIVA.
         </p>
       </header>
       <ImportWizard organizations={organizations} />

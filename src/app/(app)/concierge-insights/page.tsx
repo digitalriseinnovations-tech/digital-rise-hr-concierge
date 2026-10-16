@@ -1,7 +1,7 @@
 import { requirePermission } from "@/lib/auth";
 import { computeConciergeInsights, computeKnowledgeGaps } from "@/lib/concierge/insights";
 
-export const metadata = { title: "Concierge Insights — Digital Rise HR", description: "Digital Rise HR Concierge — admin insights." };
+export const metadata = { title: "AIVA Insights — Digital Rise", description: "AIVA — Your AI HR Partner. Admin insights. Powered by Digital Rise Innovations." };
 export const dynamic = "force-dynamic";
 
 export default async function ConciergeInsightsPage() {
@@ -14,10 +14,10 @@ export default async function ConciergeInsightsPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">HR Concierge</div>
-        <h1 className="font-display text-3xl font-extrabold text-navy-700">Concierge Insights</h1>
+        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">AIVA</div>
+        <h1 className="font-display text-3xl font-extrabold text-navy-700">Insights</h1>
         <p className="text-sm text-slate-500 mt-1">
-          What HR Concierge is actually handling, computed directly from real conversation and request data —
+          What AIVA is actually handling, computed directly from real conversation and request data —
           nothing here is a static or invented figure.
         </p>
       </header>

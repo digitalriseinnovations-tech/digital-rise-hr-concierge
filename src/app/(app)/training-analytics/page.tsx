@@ -4,7 +4,7 @@ import { lookupActiveOrganization } from "@/lib/concierge/organizations";
 import { redirect } from "next/navigation";
 import { ReminderButton } from "./ReminderButton";
 
-export const metadata = { title: "Training Analytics — Digital Rise HR", description: "Digital Rise HR Concierge — workforce learning overview." };
+export const metadata = { title: "Training Analytics — Digital Rise", description: "AIVA — Your AI HR Partner. Workforce learning overview. Powered by Digital Rise Innovations." };
 export const dynamic = "force-dynamic";
 
 function isOverdue(status: string, dueDate: string | null): boolean {
@@ -106,7 +106,7 @@ export default async function TrainingAnalyticsPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">HR Concierge</div>
+        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">AIVA</div>
         <h1 className="font-display text-3xl font-extrabold text-navy-700">Workforce Learning Overview</h1>
         <p className="text-sm text-slate-500 mt-1">
           Every figure below is computed directly from training_registrations / employees at page-load time — nothing here is a fixed or estimated number.

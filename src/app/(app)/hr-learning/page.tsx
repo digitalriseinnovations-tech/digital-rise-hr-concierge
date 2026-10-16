@@ -4,7 +4,7 @@ import { TrainingProgramForm } from "./program-form";
 import { TrainingProgramRow } from "./program-row";
 import { RegistrationsTable, type RegistrationRow } from "./registrations-table";
 
-export const metadata = { title: "HR Learning — Digital Rise HR", description: "Digital Rise HR Concierge — training and learning admin." };
+export const metadata = { title: "HR Learning — Digital Rise", description: "AIVA — Your AI HR Partner. Training and learning admin. Powered by Digital Rise Innovations." };
 import { RequestsTable, type HrRequestRow } from "./requests-table";
 
 export const dynamic = "force-dynamic";
@@ -58,11 +58,11 @@ export default async function HrLearningPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">HR Concierge</div>
+        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">AIVA</div>
         <h1 className="font-display text-3xl font-extrabold text-navy-700">HR Learning</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Training programs, registrations, and mentorship/coaching requests captured through HR Concierge. This is a
-          lightweight catalogue and request queue, not a full learning management system — HR Concierge never
+          Training programs, registrations, and mentorship/coaching requests captured through AIVA. This is a
+          lightweight catalogue and request queue, not a full learning management system — AIVA never
           auto-approves or auto-matches; every status change here is a human decision.
         </p>
       </header>

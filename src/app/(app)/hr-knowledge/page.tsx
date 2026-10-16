@@ -4,7 +4,7 @@ import { HR_KNOWLEDGE_CATEGORIES } from "@/lib/concierge/knowledge";
 import { KnowledgeEntryRow } from "./entry-row";
 import { KnowledgeEntryForm } from "./entry-form";
 
-export const metadata = { title: "HR Knowledge — Digital Rise HR", description: "Digital Rise HR Concierge — HR knowledge base." };
+export const metadata = { title: "HR Knowledge — Digital Rise", description: "AIVA — Your AI HR Partner. HR knowledge base. Powered by Digital Rise Innovations." };
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +22,10 @@ export default async function HrKnowledgePage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">HR Concierge</div>
+        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">AIVA</div>
         <h1 className="font-display text-3xl font-extrabold text-navy-700">HR Knowledge</h1>
         <p className="text-sm text-slate-500 mt-1">
-          {(entries ?? []).length} entries · this is exactly what HR Concierge is allowed to tell employees —
+          {(entries ?? []).length} entries · this is exactly what AIVA is allowed to tell employees —
           nothing else. It cannot invent policy beyond what's active here.
         </p>
       </header>

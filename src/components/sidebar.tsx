@@ -74,7 +74,7 @@ export function Sidebar({ userName, role }: { userName: string; role: FinanceRol
             {role === "hr" ? (
               <>
                 <div className="text-[10px] tracking-[0.18em] font-bold text-navy-700 uppercase">Digital Rise</div>
-                <div className="font-display text-lg font-extrabold text-navy-700 leading-none">HR Concierge</div>
+                <div className="font-display text-lg font-extrabold text-navy-700 leading-none">AIVA</div>
               </>
             ) : (
               <>

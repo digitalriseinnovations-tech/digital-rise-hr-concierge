@@ -2,7 +2,7 @@ import { requireUser, can } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { EmployeeRequestsTable, type EmployeeRequestRow } from "./requests-table";
 
-export const metadata = { title: "Employee Requests — Digital Rise HR", description: "Digital Rise HR Concierge — employee request queue." };
+export const metadata = { title: "Employee Requests — Digital Rise", description: "AIVA — Your AI HR Partner. Employee request queue. Powered by Digital Rise Innovations." };
 export const dynamic = "force-dynamic";
 
 export default async function EmployeeRequestsPage() {
@@ -33,11 +33,11 @@ export default async function EmployeeRequestsPage() {
   return (
     <div>
       <header className="mb-6">
-        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">HR Concierge</div>
+        <div className="text-[11px] tracking-[0.18em] uppercase font-bold text-navy-500 mb-2">AIVA</div>
         <h1 className="font-display text-3xl font-extrabold text-navy-700">Employee Requests</h1>
         <p className="text-sm text-slate-500 mt-1">
-          Every escalation, general question, mentorship, and coaching request HR Concierge has routed to a human —
-          {" "}{openCount} currently open. HR Concierge never resolves these itself; every status change here is a
+          Every escalation, general question, mentorship, and coaching request AIVA has routed to a human —
+          {" "}{openCount} currently open. AIVA never resolves these itself; every status change here is a
           human decision. (Training-specific registrations live on the HR Learning screen.)
         </p>
       </header>
