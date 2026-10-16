@@ -1,9 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ConciergeMarkdown } from "./conciergeMarkdown";
 import { AivaMark } from "./AivaMark";
-import { Send, ShieldCheck, ArrowRight, AlertCircle, MessageCircleHeart } from "lucide-react";
+import { Send, ShieldCheck, ArrowRight, AlertCircle, MessageCircleHeart, MessageSquarePlus, Loader2 } from "lucide-react";
 
 interface ChatMessage {
   role: "employee" | "assistant";
@@ -18,7 +18,45 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Resume the employee's own most recent conversation, if any, on first
+  // load — e.g. after a refresh or signing back in. The endpoint only ever
+  // returns the CALLER's own latest conversation (derived server-side from
+  // the verified session, never a client-supplied id), and only safe
+  // fields (role, content) — never tool_calls or any other metadata. Any
+  // failure here just leaves the panel in its normal empty-state; it never
+  // blocks sending a new message.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/concierge/history");
+        if (!res.ok) return;
+        const body: { conversationId: string | null; messages: ChatMessage[] } = await res.json();
+        if (cancelled) return;
+        if (body.conversationId && body.messages?.length > 0) {
+          setConversationId(body.conversationId);
+          setMessages(body.messages);
+        }
+      } catch {
+        // Silently fall back to a fresh conversation — never block the chat.
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function startNewConversation() {
+    setConversationId(null);
+    setMessages([]);
+    setInput("");
+    setError(null);
+  }
 
   async function send(text: string) {
     const trimmed = text.trim();
@@ -80,17 +118,35 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
-      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-6 py-3.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white">
-          <AivaMark className="h-3.5 w-3.5" />
+      <div className="flex items-center justify-between gap-2.5 border-b border-slate-100 bg-slate-50/60 px-4 py-3.5 sm:px-6">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
+            <AivaMark className="h-3.5 w-3.5" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-sm font-semibold text-slate-800">AIVA</div>
+            <div className="hidden truncate text-[11px] text-slate-400 sm:block">Your AI HR Partner · grounded in real HR data</div>
+          </div>
         </div>
-        <div>
-          <div className="text-sm font-semibold text-slate-800">AIVA</div>
-          <div className="text-[11px] text-slate-400">Your AI HR Partner · grounded in real HR data</div>
-        </div>
+        {!historyLoading && (
+          <button
+            onClick={startNewConversation}
+            disabled={loading || messages.length === 0}
+            title="Start a new conversation"
+            className="flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-500 transition hover:bg-white hover:text-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            <MessageSquarePlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">New conversation</span>
+          </button>
+        )}
       </div>
 
-      {messages.length === 0 ? (
+      {historyLoading ? (
+        <div className="flex items-center justify-center gap-2 p-10 text-sm text-slate-400">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading your conversation…
+        </div>
+      ) : messages.length === 0 ? (
         <div className="p-6">
           <div className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Try asking</div>
           <div className="flex flex-wrap gap-2">
