@@ -28,7 +28,7 @@ describe("getProductMode / getProductBranding", () => {
     process.env.APP_PRODUCT_MODE = "hr";
     expect(getProductMode()).toBe("hr");
     const branding = getProductBranding();
-    expect(branding.fullName).toBe("Digital Rise HR Concierge");
+    expect(branding.fullName).toBe("AIVA — Your AI HR Partner");
     expect(branding.name).toBe("Digital Rise");
   });
 
@@ -55,13 +55,13 @@ describe("getProductMode / getProductBranding", () => {
     }
   });
 
-  it("HR mode /login copy matches the approved Digital Rise HR Concierge copy exactly", () => {
+  it("HR mode /login copy matches the approved AIVA copy exactly", () => {
     process.env.APP_PRODUCT_MODE = "hr";
     const branding = getProductBranding();
-    expect(branding.loginHeading).toBe("HR Concierge");
-    expect(branding.loginSupportingCopy).toBe("AI-powered employee support for everyday HR requests");
+    expect(branding.loginHeading).toBe("AIVA");
+    expect(branding.loginSupportingCopy).toBe("Sign in as an HR administrator");
     expect(branding.loginAccessCopy).toBe("Secure access for employees and HR teams");
-    expect(branding.loginFooterNote).toBe("Digital Rise HR Concierge · Secure employee support");
+    expect(branding.loginFooterNote).toBe("AIVA · Powered by Digital Rise Innovations · Secure employee support");
     expect(branding.emailPlaceholder).toBe("you@company.com");
     expect(branding.noAccessMessage).toBe("Your account is not authorized for this application.");
   });
@@ -102,10 +102,10 @@ const BASE_DECISION_ARGS = {
 };
 
 describe("leaveRequestEmail (manager approval email) — branding is deployment-aware", () => {
-  it("contains Digital Rise HR Concierge branding, and NOT Verofax, in hr mode", () => {
+  it("contains AIVA branding, and NOT Verofax, in hr mode", () => {
     process.env.APP_PRODUCT_MODE = "hr";
     const html = leaveRequestEmail(BASE_REQUEST_ARGS);
-    expect(html).toContain("Digital Rise HR Concierge");
+    expect(html).toContain("AIVA — Your AI HR Partner");
     expect(html.toLowerCase()).not.toContain("verofax");
   });
 
@@ -124,10 +124,10 @@ describe("leaveRequestEmail (manager approval email) — branding is deployment-
 });
 
 describe("employeeDecisionEmail (decision notification email) — branding is deployment-aware", () => {
-  it("contains Digital Rise HR Concierge branding in hr mode", () => {
+  it("contains AIVA branding in hr mode", () => {
     process.env.APP_PRODUCT_MODE = "hr";
     const html = employeeDecisionEmail(BASE_DECISION_ARGS);
-    expect(html).toContain("Digital Rise HR Concierge");
+    expect(html).toContain("AIVA — Your AI HR Partner");
     expect(html.toLowerCase()).not.toContain("verofax");
   });
 
@@ -141,7 +141,7 @@ describe("employeeDecisionEmail (decision notification email) — branding is de
   it("rejection-decision email also carries correct branding in hr mode", () => {
     process.env.APP_PRODUCT_MODE = "hr";
     const html = employeeDecisionEmail({ ...BASE_DECISION_ARGS, decision: "rejected" });
-    expect(html).toContain("Digital Rise HR Concierge");
+    expect(html).toContain("AIVA — Your AI HR Partner");
     expect(html).toContain("Leave Not Approved");
   });
 });

@@ -303,7 +303,10 @@ export async function sendLeaveDecisionToEmployee(args: {
 // transport/send() helper above, not a new email system)
 // ============================================================================
 
-function hrEscalationEmail(args: {
+// Exported for the same reason as leaveRequestEmail/employeeDecisionEmail
+// above — so tests (and this branding verification) can assert on the
+// actual rendered HTML without sending a real email through SMTP.
+export function hrEscalationEmail(args: {
   employeeName: string;
   category: string;
   reason: string;
@@ -316,25 +319,25 @@ function hrEscalationEmail(args: {
   <tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">
       <tr><td style="background:linear-gradient(135deg,#0040A0,#002060);padding:24px 28px;">
-        <div style="color:#dbe4f3;font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">Digital Rise HR Concierge</div>
+        <div style="color:#dbe4f3;font-size:11px;letter-spacing:0.18em;font-weight:700;text-transform:uppercase;">AIVA — Your AI HR Partner</div>
         <div style="color:#fff;font-size:22px;font-weight:800;margin-top:4px;">Employee wants to speak with HR</div>
       </td></tr>
       <tr><td style="padding:28px;">
         <p style="margin:0 0 20px;font-size:14px;color:#475569;line-height:1.55;">
-          <strong>${escapeHtml(args.employeeName)}</strong> asked HR Concierge to connect them with a human HR team member.
+          <strong>${escapeHtml(args.employeeName)}</strong> asked AIVA to connect them with a human HR team member.
         </p>
         <table width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e2e8f0;border-radius:10px;padding:18px;background:#f6f9ff;">
           <tr><td style="padding:8px 0;font-size:13px;color:#64748b;width:140px;">Category</td><td style="padding:8px 0;font-size:14px;color:#0f172a;font-weight:600;text-transform:capitalize;">${escapeHtml(args.category)}</td></tr>
           <tr><td style="padding:8px 0;font-size:13px;color:#64748b;">Note</td><td style="padding:8px 0;font-size:14px;color:#0f172a;">${escapeHtml(args.reason)}</td></tr>
         </table>
         <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;line-height:1.5;">
-          This is only what HR Concierge captured — it does not include the rest of their conversation. Please
+          This is only what AIVA captured — it does not include the rest of their conversation. Please
           follow up with ${escapeHtml(args.employeeName)} directly.
         </p>
       </td></tr>
       <tr><td style="background:#f6f9ff;padding:16px 28px;border-top:1px solid #e2e8f0;">
         <p style="margin:0;font-size:11px;color:#94a3b8;text-align:center;">
-          Digital Rise HR Concierge · Internal use only
+          AIVA · Powered by Digital Rise Innovations · Internal use only
         </p>
       </td></tr>
     </table>
