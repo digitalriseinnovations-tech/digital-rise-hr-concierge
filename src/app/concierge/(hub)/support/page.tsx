@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import Link from "next/link";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/concierge/identity";
 import { getMyHrRequests } from "@/lib/concierge/hr-requests";
+import { StatusBadge } from "@/components/concierge/StatusBadge";
+import { LifeBuoy, ShieldCheck, ArrowRight, ClipboardList } from "lucide-react";
 
 const TYPE_LABEL: Record<string, string> = {
   escalation: "HR escalation",
@@ -28,24 +30,33 @@ export default async function SupportPage() {
         </p>
       </div>
 
-      <div className="rounded-2xl border border-indigo-100 bg-indigo-50 p-5">
-        <div className="text-sm font-semibold text-indigo-900 mb-1">Need to speak with HR privately?</div>
-        <p className="text-sm text-indigo-800/80 mb-3">
-          For anything sensitive — a grievance, a workplace concern, or anything you'd rather not put in writing to an
-          AI — ask HR Concierge to connect you with a person. It will never ask you to type out sensitive details
-          first.
-        </p>
-        <Link
-          href="/concierge"
-          className="inline-flex items-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700"
-        >
-          Talk to HR Concierge
-        </Link>
+      <div className="relative overflow-hidden rounded-2xl bg-brand-gradient p-6 text-white shadow-glow">
+        <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/10" />
+        <div className="relative">
+          <div className="mb-2 flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-white/80" />
+            <div className="text-sm font-semibold">Need to speak with HR privately?</div>
+          </div>
+          <p className="mb-4 max-w-xl text-sm text-white/75">
+            For anything sensitive — a grievance, a workplace concern, or anything you&apos;d rather not put in
+            writing to an AI — ask HR Concierge to connect you with a person. It will never ask you to type out
+            sensitive details first.
+          </p>
+          <Link
+            href="/concierge"
+            className="group inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 shadow-card transition hover:shadow-card-hover"
+          >
+            <LifeBuoy className="h-4 w-4" />
+            Talk to HR Concierge
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          My requests
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+          <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">My requests</div>
         </div>
         {requests.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-slate-400">
@@ -55,7 +66,7 @@ export default async function SupportPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {requests.map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-6 py-3">
+              <li key={r.id} className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-slate-50/60">
                 <div>
                   <div className="text-sm font-medium text-slate-800">{TYPE_LABEL[r.requestType] ?? r.requestType}</div>
                   {r.category && <div className="text-xs text-slate-400">{r.category}</div>}
@@ -67,19 +78,5 @@ export default async function SupportPage() {
         )}
       </div>
     </div>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    open: "bg-amber-50 text-amber-700 border-amber-200",
-    in_progress: "bg-sky-50 text-sky-700 border-sky-200",
-    resolved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    closed: "bg-slate-50 text-slate-500 border-slate-200",
-  };
-  return (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${styles[status] ?? styles.closed}`}>
-      {status.replace("_", " ")}
-    </span>
   );
 }

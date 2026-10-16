@@ -2,6 +2,8 @@ import { cookies } from "next/headers";
 import { verifySessionToken, SESSION_COOKIE_NAME } from "@/lib/concierge/identity";
 import { listTrainingPrograms, getMyTraining, type MyTrainingEntry, type TrainingProgram } from "@/lib/concierge/training";
 import { getMyHrRequests } from "@/lib/concierge/hr-requests";
+import { StatusBadge } from "@/components/concierge/StatusBadge";
+import { AlertTriangle, BookOpen, Compass, Users } from "lucide-react";
 
 export default async function MyLearningPage() {
   // Layout above already guarantees a valid session — re-resolve the
@@ -37,7 +39,8 @@ export default async function MyLearningPage() {
 
       {overdueCount > 0 && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wide text-red-700">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-red-700">
+            <AlertTriangle className="h-3.5 w-3.5" />
             {overdueCount} overdue training {overdueCount === 1 ? "item" : "items"}
           </div>
           <p className="mt-1 text-sm text-red-800">Ask HR Concierge: &quot;What mandatory training do I still need to complete?&quot;</p>
@@ -58,16 +61,14 @@ export default async function MyLearningPage() {
         hint='Ask: "What training am I enrolled in?"'
       />
 
-      <TrainingSection
-        title="Completed"
-        emptyText="No completed training yet."
-        entries={completed}
-        hint={undefined}
-      />
+      <TrainingSection title="Completed" emptyText="No completed training yet." entries={completed} hint={undefined} />
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recommended / Optional</div>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+            <Compass className="h-3.5 w-3.5" />
+            Recommended / Optional
+          </div>
           <div className="text-xs text-slate-400">Ask: &quot;What training is available?&quot;</div>
         </div>
         {recommended.length === 0 ? (
@@ -81,9 +82,10 @@ export default async function MyLearningPage() {
         )}
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Mentorship &amp; coaching requests
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+        <div className="flex items-center gap-2 border-b border-slate-100 px-6 py-4">
+          <Users className="h-3.5 w-3.5 text-slate-400" />
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Mentorship &amp; coaching requests</div>
         </div>
         {mentorshipRequests.length === 0 && coachingRequests.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-slate-400">
@@ -92,12 +94,12 @@ export default async function MyLearningPage() {
         ) : (
           <ul className="divide-y divide-slate-100">
             {[...mentorshipRequests, ...coachingRequests].map((r) => (
-              <li key={r.id} className="flex items-center justify-between px-6 py-3">
+              <li key={r.id} className="flex items-center justify-between px-6 py-3.5 transition-colors hover:bg-slate-50/60">
                 <div>
                   <div className="text-sm font-medium text-slate-800 capitalize">{r.requestType}</div>
                   {r.category && <div className="text-xs text-slate-400">{r.category}</div>}
                 </div>
-                <RequestStatusBadge status={r.status} />
+                <StatusBadge status={r.status} />
               </li>
             ))}
           </ul>
@@ -119,9 +121,12 @@ function TrainingSection({
   hint?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">{title}</div>
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
+      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
+          <BookOpen className="h-3.5 w-3.5" />
+          {title}
+        </div>
         {hint && <div className="text-xs text-slate-400">{hint}</div>}
       </div>
       {entries.length === 0 ? (
@@ -146,7 +151,7 @@ function TrainingCard({ entry }: { entry: MyTrainingEntry }) {
         : null;
 
   return (
-    <li className={`px-6 py-3 ${entry.overdue ? "bg-red-50/50" : ""}`}>
+    <li className={`px-6 py-3.5 transition-colors hover:bg-slate-50/60 ${entry.overdue ? "bg-red-50/50" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-sm font-medium text-slate-800">
@@ -170,7 +175,7 @@ function TrainingCard({ entry }: { entry: MyTrainingEntry }) {
           </div>
           {action && <div className="mt-1 text-xs text-indigo-600">{action}</div>}
         </div>
-        <TrainingStatusBadge status={entry.status} />
+        <StatusBadge status={entry.status} />
       </div>
     </li>
   );
@@ -178,7 +183,7 @@ function TrainingCard({ entry }: { entry: MyTrainingEntry }) {
 
 function ProgramCard({ program }: { program: TrainingProgram }) {
   return (
-    <li className="px-6 py-3">
+    <li className="px-6 py-3.5 transition-colors hover:bg-slate-50/60">
       <div className="flex items-center justify-between">
         <div className="text-sm font-medium text-slate-800">{program.name}</div>
         {program.nextCohortStart && <div className="text-xs text-slate-400">Next cohort {program.nextCohortStart}</div>}
@@ -191,37 +196,5 @@ function ProgramCard({ program }: { program: TrainingProgram }) {
       </div>
       <div className="mt-1 text-xs text-indigo-600">Ask: &quot;I want to enroll in {program.name}&quot;</div>
     </li>
-  );
-}
-
-function TrainingStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    assigned: "bg-amber-50 text-amber-700 border-amber-200",
-    requested: "bg-amber-50 text-amber-700 border-amber-200",
-    confirmed: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    in_progress: "bg-sky-50 text-sky-700 border-sky-200",
-    waitlisted: "bg-sky-50 text-sky-700 border-sky-200",
-    declined: "bg-red-50 text-red-700 border-red-200",
-    cancelled: "bg-slate-50 text-slate-500 border-slate-200",
-    completed: "bg-indigo-50 text-indigo-700 border-indigo-200",
-  };
-  return (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold capitalize whitespace-nowrap ${styles[status] ?? styles.cancelled}`}>
-      {status.replace("_", " ")}
-    </span>
-  );
-}
-
-function RequestStatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    open: "bg-amber-50 text-amber-700 border-amber-200",
-    in_progress: "bg-sky-50 text-sky-700 border-sky-200",
-    resolved: "bg-emerald-50 text-emerald-700 border-emerald-200",
-    closed: "bg-slate-50 text-slate-500 border-slate-200",
-  };
-  return (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${styles[status] ?? styles.closed}`}>
-      {status.replace("_", " ")}
-    </span>
   );
 }
