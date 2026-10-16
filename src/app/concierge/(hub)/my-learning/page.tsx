@@ -64,7 +64,7 @@ export default async function MyLearningPage() {
       <TrainingSection title="Completed" emptyText="No completed training yet." entries={completed} hint={undefined} />
 
       <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
-        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+        <div className="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
             <Compass className="h-3.5 w-3.5" />
             Recommended / Optional
@@ -122,7 +122,7 @@ function TrainingSection({
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white shadow-card overflow-hidden">
-      <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+      <div className="flex flex-col gap-1 border-b border-slate-100 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
           <BookOpen className="h-3.5 w-3.5" />
           {title}

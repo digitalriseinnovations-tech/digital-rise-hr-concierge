@@ -36,8 +36,8 @@ export function HubNav() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 flex items-center justify-between gap-4">
-      <div className="flex gap-1 overflow-x-auto">
+    <div className="mx-auto max-w-4xl px-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-0.5">
+      <div className="flex flex-wrap gap-x-0.5 gap-y-0.5">
         {TABS.map((tab) => {
           const active = pathname === tab.href;
           const Icon = tab.icon;
@@ -45,7 +45,7 @@ export function HubNav() {
             <Link
               key={tab.href}
               href={tab.href}
-              className={`flex items-center gap-1.5 whitespace-nowrap rounded-t-lg px-3 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+              className={`flex items-center gap-1.5 whitespace-nowrap rounded-t-lg px-2.5 py-2.5 text-sm font-medium border-b-2 transition-colors sm:px-3 ${
                 active
                   ? "text-indigo-600 border-indigo-600 bg-indigo-50/60"
                   : "text-slate-500 border-transparent hover:text-indigo-600 hover:bg-slate-50"
