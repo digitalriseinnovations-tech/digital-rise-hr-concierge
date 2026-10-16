@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { ConciergeMarkdown } from "./conciergeMarkdown";
+import { Sparkles, Send, ShieldCheck, ArrowRight, AlertCircle, MessageCircleHeart } from "lucide-react";
 
 interface ChatMessage {
   role: "employee" | "assistant";
@@ -77,16 +78,26 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
+      <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-6 py-3.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white">
+          <Sparkles className="h-3.5 w-3.5" />
+        </div>
+        <div>
+          <div className="text-sm font-semibold text-slate-800">HR Concierge</div>
+          <div className="text-[11px] text-slate-400">AI Employee · grounded in your HR data</div>
+        </div>
+      </div>
+
       {messages.length === 0 ? (
         <div className="p-6">
-          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-3">Try asking</div>
+          <div className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Try asking</div>
           <div className="flex flex-wrap gap-2">
             {suggestedPrompts.map((prompt) => (
               <button
                 key={prompt}
                 onClick={() => send(prompt)}
-                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 transition hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
+                className="rounded-full border border-slate-200 bg-slate-50 px-3.5 py-1.5 text-sm text-slate-700 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700 hover:shadow-card"
               >
                 {prompt}
               </button>
@@ -98,38 +109,34 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
           {messages.map((m, i) => (
             <MessageBubble key={i} message={m} />
           ))}
-          {loading && (
-            <div className="text-sm text-slate-400">HR Concierge is thinking…</div>
-          )}
+          {loading && <TypingIndicator />}
           <div ref={bottomRef} />
         </div>
       )}
 
-      {error && <div className="px-6 pb-2 text-sm text-red-600">{error}</div>}
+      {error && (
+        <div className="mx-6 mb-2 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
 
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 border-t border-slate-200 p-4">
+      <form onSubmit={handleSubmit} className="flex items-center gap-2.5 border-t border-slate-200 p-4">
         <input
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Ask HR anything…"
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+          className="flex-1 rounded-full border border-slate-200 bg-slate-50/60 px-4 py-2.5 text-sm text-slate-900 outline-none transition focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-100"
           disabled={loading}
         />
         <button
-          type="button"
-          title="Voice input — coming soon"
-          disabled
-          className="rounded-lg border border-slate-200 px-3 py-2 text-slate-300"
-        >
-          🎤
-        </button>
-        <button
           type="submit"
           disabled={loading || !input.trim()}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:opacity-50"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gradient text-white shadow-card transition hover:shadow-card-hover disabled:opacity-40"
+          aria-label="Send"
         >
-          Send
+          <Send className="h-4 w-4" />
         </button>
       </form>
 
@@ -137,10 +144,27 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
         <button
           onClick={() => send("I'd like to speak with HR directly.")}
           disabled={loading}
-          className="text-xs font-semibold text-slate-500 underline decoration-dotted underline-offset-2 hover:text-indigo-600"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 transition hover:text-indigo-600"
         >
+          <MessageCircleHeart className="h-3.5 w-3.5" />
           Talk to a human in HR instead
+          <ArrowRight className="h-3 w-3" />
         </button>
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-end gap-2 animate-fade-in">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
+        <Sparkles className="h-3.5 w-3.5" />
+      </div>
+      <div className="flex items-center gap-1 rounded-2xl bg-slate-100 px-4 py-3">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
       </div>
     </div>
   );
@@ -149,20 +173,33 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isEmployee = message.role === "employee";
   return (
-    <div className={`flex ${isEmployee ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-        isEmployee ? "bg-indigo-600 text-white" : "bg-slate-100 text-slate-800"
-      }`}>
+    <div className={`flex items-end gap-2 animate-fade-up ${isEmployee ? "justify-end" : "justify-start"}`}>
+      {!isEmployee && (
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
+          <Sparkles className="h-3.5 w-3.5" />
+        </div>
+      )}
+      <div
+        className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+          isEmployee ? "bg-brand-gradient text-white shadow-card" : "bg-slate-100 text-slate-800"
+        }`}
+      >
         {isEmployee ? (
           <div className="whitespace-pre-wrap">{message.content}</div>
         ) : (
           <ConciergeMarkdown content={message.content} />
         )}
         {!isEmployee && message.usedKnowledge && (
-          <div className="mt-1.5 text-[11px] font-medium text-indigo-600">✓ Grounded in verified HR knowledge</div>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-[11px] font-medium text-indigo-600">
+            <ShieldCheck className="h-3 w-3" />
+            Grounded in verified HR knowledge
+          </div>
         )}
         {!isEmployee && message.escalated && (
-          <div className="mt-1.5 text-[11px] font-medium text-amber-600">→ HR has been notified and will follow up</div>
+          <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-600">
+            <AlertCircle className="h-3 w-3" />
+            HR has been notified and will follow up
+          </div>
         )}
       </div>
     </div>
