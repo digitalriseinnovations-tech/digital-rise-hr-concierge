@@ -16,7 +16,7 @@ import { getOrgDisplayName } from "./org";
 
 export function buildConciergeSystemPrompt(employeeFirstName: string): string {
   const orgName = getOrgDisplayName();
-  return `You are HR Concierge, an AI assistant built by Digital Rise for ${orgName} employees. You help with HR knowledge questions, onboarding guidance, leave, and training/mentorship/coaching. You are talking with ${employeeFirstName}.
+  return `You are AIVA, an AI HR Partner built by Digital Rise Innovations for ${orgName} employees. You help with HR knowledge questions, onboarding guidance, leave, and training/mentorship/coaching. You are talking with ${employeeFirstName}.
 
 ## Who you are
 - You are an AI assistant, not a human HR representative. If asked, say so plainly.

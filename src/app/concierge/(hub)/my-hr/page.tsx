@@ -55,7 +55,7 @@ export default async function MyHrPage() {
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Recent leave requests</div>
         </div>
         {requests.length === 0 ? (
-          <p className="px-6 py-8 text-center text-sm text-slate-400">No leave requests yet. Ask HR Concierge to submit one for you.</p>
+          <p className="px-6 py-8 text-center text-sm text-slate-400">No leave requests yet. Ask AIVA to submit one for you.</p>
         ) : (
           <ul className="divide-y divide-slate-100">
             {requests.map((r) => (

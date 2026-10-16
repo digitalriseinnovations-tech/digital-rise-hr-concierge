@@ -39,7 +39,7 @@ export default async function SupportPage() {
           </div>
           <p className="mb-4 max-w-xl text-sm text-white/75">
             For anything sensitive — a grievance, a workplace concern, or anything you&apos;d rather not put in
-            writing to an AI — ask HR Concierge to connect you with a person. It will never ask you to type out
+            writing to an AI — ask AIVA to connect you with a person. It will never ask you to type out
             sensitive details first.
           </p>
           <Link
@@ -47,7 +47,7 @@ export default async function SupportPage() {
             className="group inline-flex items-center gap-1.5 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-navy-700 shadow-card transition hover:shadow-card-hover"
           >
             <LifeBuoy className="h-4 w-4" />
-            Talk to HR Concierge
+            Talk to AIVA
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
           </Link>
         </div>
@@ -60,7 +60,7 @@ export default async function SupportPage() {
         </div>
         {requests.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-slate-400">
-            No requests yet. Anything you ask HR Concierge to escalate, or any mentorship/coaching interest you log,
+            No requests yet. Anything you ask AIVA to escalate, or any mentorship/coaching interest you log,
             will show up here.
           </p>
         ) : (

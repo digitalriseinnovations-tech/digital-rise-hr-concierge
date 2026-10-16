@@ -2,7 +2,8 @@
 
 import { useRef, useState } from "react";
 import { ConciergeMarkdown } from "./conciergeMarkdown";
-import { Sparkles, Send, ShieldCheck, ArrowRight, AlertCircle, MessageCircleHeart } from "lucide-react";
+import { AivaMark } from "./AivaMark";
+import { Send, ShieldCheck, ArrowRight, AlertCircle, MessageCircleHeart } from "lucide-react";
 
 interface ChatMessage {
   role: "employee" | "assistant";
@@ -81,11 +82,11 @@ export function ChatPanel({ suggestedPrompts }: { suggestedPrompts: string[] }) 
     <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-card">
       <div className="flex items-center gap-2.5 border-b border-slate-100 bg-slate-50/60 px-6 py-3.5">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-gradient text-white">
-          <Sparkles className="h-3.5 w-3.5" />
+          <AivaMark className="h-3.5 w-3.5" />
         </div>
         <div>
-          <div className="text-sm font-semibold text-slate-800">HR Concierge</div>
-          <div className="text-[11px] text-slate-400">AI Employee · grounded in your HR data</div>
+          <div className="text-sm font-semibold text-slate-800">AIVA</div>
+          <div className="text-[11px] text-slate-400">Your AI HR Partner · grounded in real HR data</div>
         </div>
       </div>
 
@@ -159,7 +160,7 @@ function TypingIndicator() {
   return (
     <div className="flex items-end gap-2 animate-fade-in">
       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
-        <Sparkles className="h-3.5 w-3.5" />
+        <AivaMark className="h-3.5 w-3.5" />
       </div>
       <div className="flex items-center gap-1 rounded-2xl bg-slate-100 px-4 py-3">
         <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
@@ -176,7 +177,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     <div className={`flex items-end gap-2 animate-fade-up ${isEmployee ? "justify-end" : "justify-start"}`}>
       {!isEmployee && (
         <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-gradient text-white">
-          <Sparkles className="h-3.5 w-3.5" />
+          <AivaMark className="h-3.5 w-3.5" />
         </div>
       )}
       <div

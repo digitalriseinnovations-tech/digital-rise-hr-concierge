@@ -8,8 +8,6 @@ import { getMyHrRequests } from "@/lib/concierge/hr-requests";
 import {
   CalendarCheck,
   GraduationCap,
-  Users,
-  TrendingUp,
   Compass,
   LifeBuoy,
   ArrowUpRight,
@@ -63,12 +61,12 @@ export default async function AskHrPage() {
             Good {timeOfDayGreeting()}, {firstName}.
           </h1>
           <p className="mt-2 max-w-md text-sm text-white/75">
-            Your AI Employee for HR — ask a question below, or jump straight into leave, learning and support.
+            AIVA is ready to help — ask a question below, or jump straight into leave, learning and support.
           </p>
         </div>
       </div>
 
-      <div className="mb-8 grid grid-cols-2 gap-3.5 md:grid-cols-3">
+      <div className="mb-8 grid grid-cols-2 gap-3.5 md:grid-cols-4">
         <HomeCard
           href="/concierge/my-hr"
           label="My Leave"
@@ -78,13 +76,11 @@ export default async function AskHrPage() {
         />
         <HomeCard
           href="/concierge/my-learning"
-          label="My Learning"
-          value={activeTraining > 0 ? `${activeTraining} in progress` : "Recommended programs"}
+          label="My Learning & Growth"
+          value={activeTraining > 0 ? `${activeTraining} in progress` : "Training, mentorship & coaching"}
           icon={GraduationCap}
           tint="violet"
         />
-        <HomeCard href="/concierge/my-learning" label="Mentorship" value="Explore development support" icon={Users} tint="teal" />
-        <HomeCard href="/concierge/my-learning" label="Career Growth" value="Training & coaching" icon={TrendingUp} tint="amber" />
         <HomeCard href="/concierge/getting-started" label="Getting Started" value="Onboarding help" icon={Compass} tint="sky" />
         <HomeCard
           href="/concierge/support"
@@ -103,8 +99,6 @@ export default async function AskHrPage() {
 const TINTS = {
   indigo: "bg-indigo-50 text-indigo-600",
   violet: "bg-violet-50 text-violet-600",
-  teal: "bg-teal-50 text-teal-600",
-  amber: "bg-amber-50 text-amber-600",
   sky: "bg-sky-50 text-sky-600",
   rose: "bg-rose-50 text-rose-600",
 } as const;

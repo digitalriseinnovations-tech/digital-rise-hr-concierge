@@ -1,13 +1,14 @@
 import { IdentifyForm } from "./form";
 import { getOrgDisplayName } from "@/lib/concierge/org";
-import { Sparkles, ShieldCheck, MessageCircleHeart } from "lucide-react";
+import { AivaMark } from "@/components/concierge/AivaMark";
+import { ShieldCheck, MessageCircleHeart } from "lucide-react";
 
 export const metadata = {
-  title: "HR Concierge — Digital Rise",
+  title: "AIVA — Your AI HR Partner",
   // Explicit override — without this, Next.js metadata merging inherits
   // the ROOT layout's product-mode-driven description (see
   // src/app/layout.tsx / src/lib/product-mode.ts).
-  description: "Digital Rise HR Concierge — verify your identity to continue.",
+  description: "AIVA — verify your identity to continue. Powered by Digital Rise Innovations.",
   robots: { index: false, follow: false },
 };
 
@@ -22,12 +23,19 @@ export default function IdentifyPage() {
           <div className="absolute -left-10 bottom-10 h-40 w-40 rounded-full bg-white/10" />
           <div className="relative">
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-white/70">
-              <Sparkles className="h-3.5 w-3.5" />
               Digital Rise
             </div>
-            <h1 className="mt-4 font-display text-4xl font-extrabold leading-tight">HR Concierge</h1>
-            <p className="mt-3 text-sm text-white/75 max-w-xs">
-              Your always-on AI Employee for HR — leave, policies, training and support, grounded in real data.
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white/15">
+                <AivaMark className="h-5 w-5" />
+              </div>
+              <div>
+                <h1 className="font-display text-4xl font-extrabold leading-tight">AIVA</h1>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/60">Your AI HR Partner</p>
+              </div>
+            </div>
+            <p className="mt-4 text-sm text-white/75 max-w-xs">
+              Ask about leave, policies, training and support — grounded in real {orgName} HR data.
             </p>
           </div>
           <div className="relative space-y-4">
@@ -43,6 +51,7 @@ export default function IdentifyPage() {
               </div>
               <p className="text-xs text-white/75">Answers grounded only in {orgName}&apos;s real HR data</p>
             </div>
+            <p className="pt-2 text-[11px] text-white/50">Powered by Digital Rise Innovations</p>
           </div>
         </div>
 
@@ -50,11 +59,11 @@ export default function IdentifyPage() {
         <div className="p-8 sm:p-10 flex flex-col justify-center">
           <div className="lg:hidden mb-6 text-center">
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-indigo-600">Digital Rise</div>
-            <h1 className="mt-1 text-2xl font-extrabold text-slate-900">HR Concierge</h1>
+            <h1 className="mt-1 text-2xl font-extrabold text-slate-900">AIVA</h1>
           </div>
           <div className="mb-6">
             <h2 className="text-xl font-bold text-slate-900">Verify your identity</h2>
-            <p className="mt-1 text-sm text-slate-500">AI Employee for {orgName} — enter your employee details to continue.</p>
+            <p className="mt-1 text-sm text-slate-500">Your AI HR Partner for {orgName} — enter your employee details to continue.</p>
           </div>
           <IdentifyForm orgDisplayName={orgName} />
         </div>

@@ -18,7 +18,7 @@ export default async function GettingStartedPage() {
         <h1 className="text-2xl font-extrabold text-slate-900">Getting Started</h1>
         <p className="mt-1 text-sm text-slate-500">
           Onboarding guidance for your first weeks at {orgName}, grounded in the real HR knowledge base — ask
-          HR Concierge anything below for more detail.
+          AIVA anything below for more detail.
         </p>
       </div>
 
@@ -29,7 +29,7 @@ export default async function GettingStartedPage() {
         </div>
         {onboarding.entries.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-slate-400">
-            No onboarding guidance configured yet — ask HR Concierge and it will connect you with HR.
+            No onboarding guidance configured yet — ask AIVA and it will connect you with HR.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
@@ -69,7 +69,7 @@ export default async function GettingStartedPage() {
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-card">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400 mb-2">Need something else?</div>
         <p className="text-sm text-slate-600 mb-4">
-          For IT/system access, benefits enrollment, or anything not covered here, ask HR Concierge directly — it can
+          For IT/system access, benefits enrollment, or anything not covered here, ask AIVA directly — it can
           answer from {orgName}&apos;s HR policies or connect you with a real person.
         </p>
         <Link
@@ -77,7 +77,7 @@ export default async function GettingStartedPage() {
           className="group inline-flex items-center gap-1.5 rounded-xl bg-brand-gradient px-4 py-2.5 text-sm font-semibold text-white shadow-card transition hover:shadow-card-hover"
         >
           <MessageCircle className="h-4 w-4" />
-          Ask HR Concierge
+          Ask AIVA
           <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
       </div>

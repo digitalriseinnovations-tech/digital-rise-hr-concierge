@@ -33,7 +33,7 @@ export default async function MyLearningPage() {
       <div>
         <h1 className="text-2xl font-extrabold text-slate-900">My Learning &amp; Growth</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Training, mentorship, and coaching — ask HR Concierge in Ask HR to enroll, start, or continue any of these.
+          Training, mentorship, and coaching — ask AIVA in Ask HR to enroll, start, or continue any of these.
         </p>
       </div>
 
@@ -43,7 +43,7 @@ export default async function MyLearningPage() {
             <AlertTriangle className="h-3.5 w-3.5" />
             {overdueCount} overdue training {overdueCount === 1 ? "item" : "items"}
           </div>
-          <p className="mt-1 text-sm text-red-800">Ask HR Concierge: &quot;What mandatory training do I still need to complete?&quot;</p>
+          <p className="mt-1 text-sm text-red-800">Ask AIVA: &quot;What mandatory training do I still need to complete?&quot;</p>
         </div>
       )}
 
@@ -89,7 +89,7 @@ export default async function MyLearningPage() {
         </div>
         {mentorshipRequests.length === 0 && coachingRequests.length === 0 ? (
           <p className="px-6 py-8 text-center text-sm text-slate-400">
-            No requests yet. Ask HR Concierge if you&apos;re interested in a mentor or executive coaching.
+            No requests yet. Ask AIVA if you&apos;re interested in a mentor or executive coaching.
           </p>
         ) : (
           <ul className="divide-y divide-slate-100">
